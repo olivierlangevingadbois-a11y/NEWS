@@ -1,5 +1,5 @@
 import {
-  REGION_LABEL, REGION_ORDER, BIAS, BIAS_BY_KEY, COUNTRY, OWNERSHIP, FACT, FACT_SCORE, PAYWALL,
+  REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, SUBTOPIC_LABEL, TOPIC_SUBTOPICS, BIAS, BIAS_BY_KEY, COUNTRY, OWNERSHIP, FACT, FACT_SCORE, PAYWALL,
   bucketOf, sideOf, esc, safeUrl, fold, plural, timeAgo, store, biasBar, biasSummary, biasLegend, sideCounts,
 } from './lib.js';
 
@@ -37,12 +37,22 @@ function flags(story) {
   return out.join('');
 }
 
+function kicker(story) {
+  const place = REGION_LABEL[story.region];
+  const sub = (story.subtopics || [])[0];
+  const theme = sub ? SUBTOPIC_LABEL[sub] : TOPIC_LABEL[(story.topics || [])[0]];
+  const parts = [];
+  if (place || !theme) parts.push(`<span class="region">${esc(place || 'Monde')}</span>`);
+  if (theme) parts.push(`<span class="topic">${esc(theme)}</span>`);
+  return `<div class="kicker">${parts.join('')}<span>${esc(timeAgo(story.updated))}</span></div>`;
+}
+
 export function storyCard(story, ctx, { hero = false, headingLevel = 3 } = {}) {
   const h = `h${hero ? 2 : headingLevel}`;
   const img = story.image ? `<img class="thumb" src="${esc(safeUrl(story.image))}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
   const langs = [story.langs.fr ? `FR ${story.langs.fr}` : '', story.langs.en ? `EN ${story.langs.en}` : ''].filter(Boolean).join(' · ');
   const body = `
-    <div class="kicker"><span class="region">${esc(REGION_LABEL[story.region] || 'Monde')}</span><span>${esc(timeAgo(story.updated))}</span></div>
+    ${kicker(story)}
     <${h}><a href="#/histoire/${esc(story.id)}">${esc(displayTitle(story, ctx))}</a></${h}>
     ${hero && story.lead ? `<p class="lead">${esc(story.lead)}</p>` : ''}
     ${biasBar(story.bias)}
@@ -93,12 +103,21 @@ export function renderHome(ctx) {
       <div class="stories">${list.map((s) => storyCard(s, ctx)).join('')}</div></section>`;
   }).join('');
 
+  // Thèmes : les découvertes n'ont souvent qu'une source, on complète avec des brèves.
+  const byTopic = TOPIC_ORDER.map((t) => {
+    const pool = all.filter((s) => (s.topics || []).includes(t) && !shown.has(s.id));
+    const list = [...pool.filter((s) => s.sourceCount >= 2), ...pool.filter((s) => s.sourceCount === 1)].slice(0, 3);
+    if (!list.length) return '';
+    return `<section class="block"><div class="compare-head"><h2>${esc(TOPIC_LABEL[t])}</h2><a href="#/theme/${t}">Tout voir →</a></div>
+      <div class="stories">${list.map((s) => storyCard(s, ctx)).join('')}</div></section>`;
+  }).join('');
+
   return `${demoNotice(ctx)}
   <div class="layout">
     <div>
       <h1 class="section-title">À la une</h1>
       <div class="stories">${storyCard(top, ctx, { hero: true })}${rest.slice(0, 9).map((s) => storyCard(s, ctx)).join('')}</div>
-      <div style="margin-top:36px">${byRegion}</div>
+      <div style="margin-top:36px">${byRegion}${byTopic}</div>
     </div>
     <aside class="side">
       <div class="panel"><div class="stats">
@@ -140,6 +159,43 @@ export function renderRegion(ctx, region) {
     <aside class="side">
       ${abroad.length ? `<div class="panel"><h2>Vu d'ailleurs</h2><p class="sub">Reprises par la presse étrangère.</p>${miniList(abroad, ctx)}</div>` : ''}
       <div class="panel"><h2>Angles morts</h2><p class="sub">Dans cette région.</p>${miniList(blind, ctx)}</div>
+    </aside>
+  </div>`;
+}
+
+// ---------- Thèmes : sciences, IA, environnement ----------
+
+const TOPIC_INTRO = {
+  science: 'Découvertes, inventions, espace, santé : la recherche vue par la presse scientifique et généraliste, en français et en anglais.',
+  ai: "L'intelligence artificielle : percées, entreprises, encadrement, et ce que ça change ici.",
+  environment: 'Climat, biodiversité, énergie et catastrophes naturelles, avec la presse spécialisée et généraliste de toutes tendances.',
+};
+
+export function renderTopic(ctx, topic) {
+  const subs = TOPIC_SUBTOPICS[topic];
+  const sub = subs.includes(ctx.ui.subtopic) ? ctx.ui.subtopic : null;
+  const all = visibleStories(ctx.stories, ctx).filter((s) => (s.topics || []).includes(topic) && (!sub || (s.subtopics || []).includes(sub)));
+  const multi = all.filter((s) => s.sourceCount >= 2);
+  const briefs = all.filter((s) => s.sourceCount === 1).slice(0, 40);
+  const local = multi.filter((s) => s.regions.includes('quebec') || s.regions.includes('canada')).slice(0, 5);
+  const blind = multi.filter((s) => s.blindspot).slice(0, 5);
+  const specialists = ctx.sources.filter((s) => (s.topics || []).includes(topic)).sort((a, b) => b.articles - a.articles);
+  const chip = (value, label) => `<button type="button" data-subtopic="${value}" aria-pressed="${(sub || '') === value}">${esc(label)}</button>`;
+  const empty = sub ? `Rien en ce moment dans « ${SUBTOPIC_LABEL[sub]} ».` : 'Aucune histoire multi-sources sur ce thème en ce moment.';
+
+  return `${demoNotice(ctx)}
+  <div class="page-head"><h1>${esc(TOPIC_LABEL[topic])}</h1><p>${esc(TOPIC_INTRO[topic])}</p></div>
+  ${subs.length ? `<div class="seg" role="group" aria-label="Sous-thème" style="margin-bottom:16px">${chip('', 'Tout')}${subs.map((k) => chip(k, SUBTOPIC_LABEL[k])).join('')}</div>` : ''}
+  <div class="layout">
+    <div>
+      ${multi.length ? `<div class="stories">${multi.map((s, i) => storyCard(s, ctx, { hero: i === 0 && Boolean(s.image), headingLevel: 2 })).join('')}</div>` : `<div class="empty">${esc(empty)}</div>`}
+      ${briefsList(briefs, ctx)}
+    </div>
+    <aside class="side">
+      <div class="panel"><h2>Ici</h2><p class="sub">Au Québec et au Canada.</p>${miniList(local, ctx)}</div>
+      <div class="panel"><h2>Angles morts</h2><p class="sub">Sur ce thème.</p>${miniList(blind, ctx)}</div>
+      ${specialists.length ? `<div class="panel"><h2>Sources spécialisées</h2><p class="sub">En plus des sections de la presse généraliste.</p>
+        <div class="chips">${specialists.map((s) => `<a class="chip" href="${esc(safeUrl(s.site))}" target="_blank" rel="noopener">${esc(s.name)}</a>`).join('')}</div></div>` : ''}
     </aside>
   </div>`;
 }
@@ -245,7 +301,7 @@ export function renderStory(ctx, id) {
 
   return `<article class="detail">
     <a class="back" href="#/" data-back>← Retour</a>
-    <div class="kicker">${story.regions.map((r) => `<a class="region" href="#/region/${r}">${esc(REGION_LABEL[r])}</a>`).join('')}<span>Première mention ${esc(timeAgo(story.firstSeen))}</span><span>Mise à jour ${esc(timeAgo(story.updated))}</span></div>
+    <div class="kicker">${story.regions.map((r) => `<a class="region" href="#/region/${r}">${esc(REGION_LABEL[r])}</a>`).join('')}${(story.topics || []).map((t) => `<a class="topic" href="#/theme/${t}">${esc(TOPIC_LABEL[t])}</a>`).join('')}<span>Première mention ${esc(timeAgo(story.firstSeen))}</span><span>Mise à jour ${esc(timeAgo(story.updated))}</span></div>
     <h1>${esc(displayTitle(story, ctx))}</h1>
     <div class="meta">${flags(story)}</div>
     ${img}
@@ -304,6 +360,7 @@ export function renderSources(ctx) {
       <li><strong>Orientation.</strong> Chaque média reçoit une orientation de −3 (gauche) à +3 (droite), <em>relative au spectre politique de son pays</em> : le « centre » français n'est pas le « centre » américain. Ce sont des estimations éditoriales inspirées d'évaluations publiques (AllSides, Ad Fontes Media, Media Bias/Fact Check) et adaptées au contexte. Elles sont dans <code>config/sources.json</code> et peuvent être corrigées.</li>
       <li><strong>Médias d'État.</strong> Les médias contrôlés par un gouvernement autoritaire (TASS, Global Times) ne sont pas placés sur l'axe gauche-droite : ils forment une colonne à part, parce qu'ils relaient une ligne officielle.</li>
       <li><strong>Au-delà de la gauche et de la droite.</strong> Chaque histoire montre aussi la langue, le pays d'origine et le type de propriétaire des médias qui la couvrent, pour éviter de tout réduire à un seul axe.</li>
+      <li><strong>Thèmes.</strong> Sciences, intelligence artificielle et environnement sont repérés par un vocabulaire bilingue et par les flux des médias spécialisés. Une histoire peut être à la fois « Québec » et « Environnement ». Dans un article sur une catastrophe naturelle, les mots comme « dévastateur » décrivent les faits : ils ne comptent pas dans le ton.</li>
       <li><strong>Ton par article.</strong> Le ton est évalué pour chaque titre, pas pour le média : un titre factuel d'un média partisan n'est pas pénalisé, et un titre sensationnaliste est signalé où qu'il soit publié.</li>
       <li><strong>Angles morts.</strong> Une histoire est un angle mort quand au moins trois médias d'un côté la couvrent et que l'autre côté l'ignore presque (15 % ou moins). Les « deux solitudes » sont les histoires canadiennes couvertes dans une seule langue officielle.</li>
       <li><strong>Résumés.</strong> Si une clé API est configurée, un résumé neutre est généré par IA pour les histoires les plus couvertes, avec le cadrage de chaque camp. Il est toujours identifié comme tel.</li>
@@ -321,7 +378,7 @@ export function renderSources(ctx) {
       const ok = s.feeds.filter((x) => x.ok).length;
       const errs = s.feeds.filter((x) => x.ok === false).map((x) => x.error).filter(Boolean).join(' ; ');
       return `<tr>
-        <td><a href="${esc(safeUrl(s.site))}" target="_blank" rel="noopener"><b>${esc(s.name)}</b></a> <span class="muted">${s.lang.toUpperCase()}</span>${s.note ? `<div class="muted">${esc(s.note)}</div>` : ''}</td>
+        <td><a href="${esc(safeUrl(s.site))}" target="_blank" rel="noopener"><b>${esc(s.name)}</b></a> <span class="muted">${s.lang.toUpperCase()}</span>${s.topics?.length ? `<div class="muted">Spécialisé : ${esc(s.topics.map((t) => TOPIC_LABEL[t]).join(', '))}</div>` : ''}${s.note ? `<div class="muted">${esc(s.note)}</div>` : ''}</td>
         <td>${esc(COUNTRY[s.country] || s.country)}</td>
         <td><span class="dot" style="--c:${b.color}"></span> ${esc(b.label)}${s.qcAxis ? `<div class="muted">${esc({ federalist: 'Fédéraliste', nationalist: 'Nationaliste', neutral: 'Neutre sur la question nationale' }[s.qcAxis])}</div>` : ''}</td>
         <td>${esc(FACT[s.fact])}</td>

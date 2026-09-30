@@ -1,8 +1,10 @@
 # Prisme — l'actualité sous tous ses angles
 
-Prisme est un agrégateur de nouvelles centré sur le Québec, inspiré de Ground News. Il regroupe automatiquement les articles de **108 médias** (147 flux RSS), en français d'abord et en anglais aussi, et montre pour chaque histoire **qui la couvre et comment**.
+Prisme est un agrégateur de nouvelles centré sur le Québec, inspiré de Ground News. Il regroupe automatiquement les articles de **135 médias** (192 flux RSS), en français d'abord et en anglais aussi, et montre pour chaque histoire **qui la couvre et comment**.
 
-Couverture : **Québec · Canada (ici et dans le monde) · États-Unis · Europe · Asie et Moyen-Orient · Afrique · Océanie**.
+Régions : **Québec · Canada (ici et dans le monde) · États-Unis · Europe · Asie et Moyen-Orient · Afrique · Océanie**.
+
+Thèmes : **Sciences** (découvertes, inventions, espace, santé) · **Intelligence artificielle** · **Environnement** (climat, biodiversité, catastrophes naturelles). Une histoire peut appartenir à une région et à un thème à la fois.
 
 Le site s'actualise tout seul : une tâche GitHub Actions relit les flux **toutes les 20 minutes** et republie le site sur GitHub Pages. Les pages ouvertes vérifient les nouveautés toutes les 2 minutes et proposent de les afficher, sans vous faire perdre votre place.
 
@@ -19,6 +21,7 @@ Le site s'actualise tout seul : une tâche GitHub Actions relit les flux **toute
 | Tableau de bord personnel payant | **Mon régime médiatique** est gratuit et privé : calculé dans votre navigateur (orientation, langue, provenance, propriétaires), avec des suggestions pour élargir vos horizons. Aucun compte ni pistage. |
 | Résumés réservés aux abonnés | Résumés IA optionnels : un résumé neutre, les faits clés, le **cadrage de chaque camp**, ce qui diverge et, au besoin, la pertinence pour le Québec. Toujours identifiés comme générés par IA. |
 | — | **Le Canada vu d'ailleurs** : les histoires canadiennes reprises par la presse étrangère. |
+| — | **Sciences, IA, environnement** : presse spécialisée (Québec Science, Agence Science-Presse, Nature, New Scientist, NASA, The Narwhal, Carbon Brief…) croisée avec la presse généraliste, filtres Espace, Santé et Catastrophes naturelles, et un encadré « Ici » pour l'angle québécois et canadien. |
 
 ## Mettre le site en ligne (5 minutes)
 
@@ -57,6 +60,7 @@ src/pipeline/fetch.js    Lecture RSS / Atom / RDF, concurrence bornée, rapport 
 src/pipeline/text.js     Normalisation bilingue FR/EN (lexique commun, noms propres, racinisation)
 src/pipeline/cluster.js  TF-IDF + regroupement agglomératif à liaison moyenne (histoires FR + EN réunies)
 src/pipeline/geo.js      Attribution des régions (lieux, institutions, personnalités)
+src/pipeline/topics.js   Thèmes : sciences (espace, santé), IA, environnement (catastrophes naturelles)
 src/pipeline/tone.js     Ton de chaque titre (mots chargés, majuscules, points d'exclamation)
 src/pipeline/analyze.js  Couverture par orientation, angles morts, deux solitudes, provenance, propriété
 src/pipeline/summarize.js Résumés multiperspectives optionnels (API Claude), avec cache
@@ -75,7 +79,8 @@ Tout est dans [`config/sources.json`](config/sources.json). Pour ajouter un méd
 - `fact` : `very-high`, `high`, `mostly`, `mixed` ou `low` ;
 - `own` : `type` (`public`, `state`, `nonprofit`, `coop`, `independent`, `family`, `corporate`, `fund`) et `name` ;
 - `paywall` : `free`, `metered` ou `hard` ;
-- `feeds` : URL des flux, avec une région facultative (`quebec`, `canada`, `us`, `europe`, `asia`, `africa`, `oceania`, `world`).
+- `feeds` : URL des flux, avec une région facultative (`quebec`, `canada`, `us`, `europe`, `asia`, `africa`, `oceania`, `world`) et un thème facultatif (`science`, `space`, `health`, `ai`, `environment`, `disaster`) pour les flux spécialisés ;
+- `topics` (facultatif) : les thèmes d'un média spécialisé, affichés dans la page Sources et dans l'encadré « Sources spécialisées ».
 
 Les cotes fournies sont des estimations éditoriales inspirées d'évaluations publiques (AllSides, Ad Fontes Media, Media Bias/Fact Check) et adaptées au contexte de chaque pays. Elles se discutent et se corrigent.
 

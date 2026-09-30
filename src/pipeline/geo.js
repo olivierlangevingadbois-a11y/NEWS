@@ -1,4 +1,4 @@
-import { normalize } from './text.js';
+import { compileKeywords, countKeywords } from './text.js';
 
 export const REGIONS = ['quebec', 'canada', 'us', 'europe', 'asia', 'africa', 'oceania'];
 
@@ -53,22 +53,8 @@ const KEYWORDS = {
 // Termes trop ambigus pour être comptés sans majuscule dans le texte original.
 const CASE_SENSITIVE = new Set(['us', 'eu', 'ue', 'uk', 'stm', 'caq', 'plq', 'rdc', 'drc']);
 
-const PATTERNS = Object.fromEntries(REGIONS.map((region) => [
-  region,
-  [...new Set(KEYWORDS[region].split(',').map((k) => k.trim()).filter(Boolean))].map((raw) => ({ raw, norm: normalize(raw) })),
-]));
-
-function countMatches(text, region) {
-  if (!text) return 0;
-  const hay = ` ${normalize(text)} `;
-  let n = 0;
-  for (const { raw, norm } of PATTERNS[region]) {
-    if (!norm || !hay.includes(` ${norm} `)) continue;
-    if (CASE_SENSITIVE.has(norm) && !new RegExp(`\\b${raw.replace(/\./g, '\\.')}\\b`).test(text)) continue;
-    n += 1;
-  }
-  return n;
-}
+const PATTERNS = Object.fromEntries(REGIONS.map((region) => [region, compileKeywords(KEYWORDS[region])]));
+const countMatches = (text, region) => countKeywords(text, PATTERNS[region], CASE_SENSITIVE);
 
 export function tagArticle(article, source) {
   const scores = {};

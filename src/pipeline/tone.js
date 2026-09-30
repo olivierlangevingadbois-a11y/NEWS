@@ -17,10 +17,14 @@ woke radical extremist thug thugs regime lunatic unhinged tyranny tyrant sham ho
 // Les expressions multi-mots sont écrites avec des _ (normalize les change en espaces).
 const LOADED_TERMS = [...new Set(LOADED.split(/\s+/).filter(Boolean).map(normalize))];
 
-export function scoreTone(title) {
+// Dans un article sur une catastrophe naturelle, ces mots décrivent les faits.
+const LITERAL_IN_DISASTER = new Set(['catastrophe', 'catastrophique', 'desastre', 'desastreux', 'devaste', 'devastateur', 'devastatrice',
+  'effondrement', 'disaster', 'disastrous', 'devastating', 'catastrophic', 'collapse', 'panique', 'panic', 'chaos', 'chaotic'].map(normalize));
+
+export function scoreTone(title, { disaster = false } = {}) {
   const t = String(title || '');
   const hay = ` ${normalize(t)} `;
-  const hits = LOADED_TERMS.filter((w) => hay.includes(` ${w} `));
+  const hits = LOADED_TERMS.filter((w) => hay.includes(` ${w} `) && !(disaster && LITERAL_IN_DISASTER.has(w)));
   let score = hits.length;
   if (/!/.test(t)) score += 1;
   if (/\b\p{Lu}{4,}\b/u.test(t) && !/\b(NATO|OTAN|FIFA|NASA|OPEC|OPEP|UNESCO|COVID|CNESST|SAAQ|RAMQ|CUSMA|ACEUM|USMCA)\b/.test(t)) score += 1;

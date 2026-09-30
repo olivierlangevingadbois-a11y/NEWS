@@ -1,5 +1,5 @@
-import { REGION_LABEL, REGION_ORDER, store, esc, timeAgo } from './lib.js';
-import { renderHome, renderRegion, renderStory, renderBlindspots, renderSources, renderProfile, renderSearch, recordRead } from './views.js';
+import { REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, store, esc, timeAgo } from './lib.js';
+import { renderHome, renderRegion, renderTopic, renderStory, renderBlindspots, renderSources, renderProfile, renderSearch, recordRead } from './views.js';
 
 const POLL_MS = 2 * 60 * 1000;
 const main = document.getElementById('main');
@@ -41,16 +41,24 @@ function route() {
 
 function renderTabs() {
   const { name, arg } = route();
-  const current = name === 'region' ? `region/${arg}` : name;
+  const current = name === 'region' || name === 'theme' ? `${name}/${arg}` : name;
   const link = (href, label) => `<a href="#/${href}" ${current === href || (href === '' && current === 'home') ? 'aria-current="page"' : ''}>${esc(label)}</a>`;
   document.getElementById('tabs').innerHTML = [
     link('', 'À la une'),
     ...REGION_ORDER.map((r) => link(`region/${r}`, r === 'asia' ? 'Asie et M.-O.' : REGION_LABEL[r])),
     '<span class="sep" aria-hidden="true"></span>',
+    ...TOPIC_ORDER.map((t) => link(`theme/${t}`, t === 'ai' ? 'IA' : TOPIC_LABEL[t])),
+    '<span class="sep" aria-hidden="true"></span>',
     link('angles-morts', 'Angles morts'),
-    link('sources', 'Sources'),
-    link('profil', 'Mon profil'),
   ].join('');
+  // Sur mobile, l'onglet actif peut être hors de vue : on le centre dans la barre.
+  const tabs = document.getElementById('tabs');
+  const active = tabs.querySelector('[aria-current="page"]');
+  if (active) tabs.scrollLeft = active.offsetLeft - (tabs.clientWidth - active.clientWidth) / 2;
+  for (const [id, page] of [['sources-link', 'sources'], ['profile-link', 'profil']]) {
+    const el = document.getElementById(id);
+    if (current === page) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  }
 }
 
 function render({ keepScroll = false } = {}) {
@@ -60,6 +68,7 @@ function render({ keepScroll = false } = {}) {
   const views = {
     home: () => renderHome(ctx),
     region: () => (REGION_LABEL[arg] ? renderRegion(ctx, arg) : renderHome(ctx)),
+    theme: () => (TOPIC_LABEL[arg] ? renderTopic(ctx, arg) : renderHome(ctx)),
     histoire: () => renderStory(ctx, arg),
     'angles-morts': () => renderBlindspots(ctx),
     sources: () => renderSources(ctx),
@@ -77,6 +86,7 @@ function render({ keepScroll = false } = {}) {
 window.addEventListener('hashchange', () => {
   ctx.ui.storyLang = 'all';
   ctx.ui.expanded = {};
+  ctx.ui.subtopic = null;
   render();
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
@@ -97,6 +107,12 @@ main.addEventListener('click', (e) => {
   const langBtn = e.target.closest('[data-story-lang]');
   if (langBtn) {
     ctx.ui.storyLang = langBtn.dataset.storyLang;
+    render({ keepScroll: true });
+  }
+
+  const subtopic = e.target.closest('[data-subtopic]');
+  if (subtopic) {
+    ctx.ui.subtopic = subtopic.dataset.subtopic || null;
     render({ keepScroll: true });
   }
 

@@ -124,7 +124,7 @@ export async function fetchAll(sources, { concurrency = 12, timeoutMs = 15000, l
         const xml = loadFixture ? await loadFixture(source, feed) : await fetchText(feed.url, timeoutMs);
         if (xml == null) continue;
         const items = parseFeed(xml);
-        for (const item of items) articles.push({ ...item, sourceId: source.id, feedRegion: feed.region || null });
+        for (const item of items) articles.push({ ...item, sourceId: source.id, feedRegion: feed.region || null, feedTopic: feed.topic || null });
         health.push({ sourceId: source.id, url: feed.url, ok: true, items: items.length, ms: Date.now() - started });
       } catch (err) {
         health.push({ sourceId: source.id, url: feed.url, ok: false, error: String(err.message || err).slice(0, 160), ms: Date.now() - started });

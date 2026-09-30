@@ -3,6 +3,11 @@ export const REGION_LABEL = {
 };
 export const REGION_ORDER = ['quebec', 'canada', 'us', 'europe', 'asia', 'africa', 'oceania'];
 
+export const TOPIC_LABEL = { science: 'Sciences', ai: 'Intelligence artificielle', environment: 'Environnement' };
+export const TOPIC_ORDER = ['science', 'ai', 'environment'];
+export const SUBTOPIC_LABEL = { space: 'Espace', health: 'Santé et médecine', disaster: 'Catastrophes naturelles' };
+export const TOPIC_SUBTOPICS = { science: ['space', 'health'], ai: [], environment: ['disaster'] };
+
 export const BIAS = [
   { key: 'left', label: 'Gauche', color: 'var(--bias-left)' },
   { key: 'cleft', label: 'Centre gauche', color: 'var(--bias-cleft)' },

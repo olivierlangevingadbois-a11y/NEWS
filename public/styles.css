@@ -65,18 +65,25 @@ img { max-width: 100%; display: block; }
 .search { margin-left: auto; position: relative; flex: 0 1 360px; }
 .search svg { position: absolute; left: 10px; top: 50%; width: 16px; height: 16px; transform: translateY(-50%); color: var(--text-3); }
 .search input { width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
-.icon-btn { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); cursor: pointer; flex: none; }
+.icon-btn { display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 50%; background: var(--surface); cursor: pointer; flex: none; color: var(--text-2); }
+.icon-btn:hover, .icon-btn[aria-current="page"] { color: var(--text); border-color: var(--text-3); }
+.icon-btn[aria-current="page"] { background: var(--surface-2); }
 .icon-btn svg { width: 18px; height: 18px; }
-.tabs { max-width: 1120px; margin: 0 auto; padding: 0 16px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.tabs { max-width: 1120px; margin: 0 auto; padding: 0 16px; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tabs a { padding: 8px 12px 10px; text-decoration: none; color: var(--text-2); font-size: .92rem; white-space: nowrap; border-bottom: 2px solid transparent; }
+.tabs a { padding: 8px 9px 10px; text-decoration: none; color: var(--text-2); font-size: .92rem; white-space: nowrap; border-bottom: 2px solid transparent; }
 .tabs a:hover { color: var(--text); }
 .tabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
 .tabs .sep { width: 1px; background: var(--border); margin: 8px 6px 12px; flex: none; }
 @media (max-width: 640px) {
   .status { display: none; }
   .search { flex: 1 1 auto; }
+  .topbar-inner { gap: 8px; }
 }
+@media (max-width: 480px) { .brand-name { display: none; } }
+/* Indique qu'on peut faire défiler les onglets quand ils débordent. */
+.tabs { mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+@media (min-width: 1160px) { .tabs { mask-image: none; } }
 
 .refresh-banner { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 999px; background: var(--text); color: var(--bg); box-shadow: 0 6px 24px rgb(0 0 0 / .2); font-size: .92rem; max-width: calc(100vw - 32px); }
 .refresh-banner button { border: 0; border-radius: 999px; padding: 6px 14px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
@@ -113,6 +120,9 @@ main:focus { outline: none; }
 @media (max-width: 520px) { .story .thumb { width: 76px; height: 64px; } }
 .kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .78rem; color: var(--text-3); }
 .kicker .region { color: var(--accent); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.kicker .topic { color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.kicker a.region, .kicker a.topic { text-decoration: none; }
+.kicker a.region:hover, .kicker a.topic:hover { text-decoration: underline; }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; font-size: .82rem; color: var(--text-2); }
 .meta strong { color: var(--text); }
 .flag { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: .74rem; font-weight: 600; background: var(--surface-2); color: var(--text-2); white-space: nowrap; }
@@ -246,3 +256,5 @@ dialog::backdrop { background: rgb(0 0 0 / .35); }
 
 .skeleton { height: 110px; border-radius: var(--radius); background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
+a.chip { text-decoration: none; }
+a.chip:hover { color: var(--text); }

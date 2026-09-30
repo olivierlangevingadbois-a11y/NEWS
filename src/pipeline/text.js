@@ -31,7 +31,7 @@ const PHRASES = [
   ['cote d ivoire', 'ivorycoast'], ['ivory coast', 'ivorycoast'], ['burkina faso', 'burkina'], ['nouvelle caledonie', 'newcaledonia'], ['new caledonia', 'newcaledonia'],
   ['hydro quebec', 'hydroquebec'], ['parti quebecois', 'pq'], ['quebec solidaire', 'qs'], ['bloc quebecois', 'bloc'], ['coalition avenir quebec', 'caq'],
   ['intelligence artificielle', 'ai'], ['artificial intelligence', 'ai'], ['changements climatiques', 'climate'], ['changement climatique', 'climate'], ['climate change', 'climate'],
-  ['cout de la vie', 'costofliving'], ['cost of living', 'costofliving'], ['medias sociaux', 'socialmedia'], ['reseaux sociaux', 'socialmedia'], ['social media', 'socialmedia'], ['taux de chomage', 'unemployment'], ['unemployment rate', 'unemployment'], ['pays bas', 'netherlands'], ['viet nam', 'vietnam'], ['mises a pied', 'layoff'], ['premieres nations', 'indigenous'], ['first nations', 'indigenous'], ['new york', 'newyork'], ['los angeles', 'losangeles'],
+  ['centres de donnees', 'datacenter'], ['centre de donnees', 'datacenter'], ['data centers', 'datacenter'], ['data center', 'datacenter'], ['data centres', 'datacenter'], ['data centre', 'datacenter'], ['grands modeles de langage', 'llm'], ['grand modele de langage', 'llm'], ['large language models', 'llm'], ['large language model', 'llm'], ['apprentissage automatique', 'machinelearning'], ['machine learning', 'machinelearning'], ['annees lumiere', 'lightyear'], ['light years', 'lightyear'], ['light year', 'lightyear'], ['vapeur d eau', 'watervapor'], ['water vapour', 'watervapor'], ['water vapor', 'watervapor'], ['gaz a effet de serre', 'greenhousegas'], ['greenhouse gases', 'greenhousegas'], ['greenhouse gas', 'greenhousegas'], ['cout de la vie', 'costofliving'], ['cost of living', 'costofliving'], ['medias sociaux', 'socialmedia'], ['reseaux sociaux', 'socialmedia'], ['social media', 'socialmedia'], ['taux de chomage', 'unemployment'], ['unemployment rate', 'unemployment'], ['pays bas', 'netherlands'], ['viet nam', 'vietnam'], ['mises a pied', 'layoff'], ['premieres nations', 'indigenous'], ['first nations', 'indigenous'], ['new york', 'newyork'], ['los angeles', 'losangeles'],
 ];
 
 // Mots simples (normalisés, sans accents) → jeton canonique commun FR/EN.
@@ -85,6 +85,12 @@ const LEXICON = Object.fromEntries(Object.entries({
   melt: 'fonte fondent fond melting melts', ice: 'glace', famine: 'famines', aid: 'aide humanitaire humanitarian', truck: 'camion camions trucks',
   drone: 'drones', missile: 'missiles', capital: 'capitale', ban: 'interdiction interdire interdit bans banned', child: 'enfant enfants children kids jeunes',
   report: 'rapport rapports', cost: 'cout couts costs', billion: 'milliard milliards billions', million: 'millions', court: 'tribunal tribunaux cour courts',
+  ai: 'ia', genai: 'generative generatif generatifs generatives', chip: 'puce puces chips semiconducteur semiconducteurs semiconductor semiconductors', model: 'modele modeles models',
+  telescope: 'telescopes', exoplanet: 'exoplanete exoplanetes exoplanets', astronomer: 'astronome astronomes astronomers', atmosphere: 'atmospheres',
+  species: 'espece especes', dinosaur: 'dinosaure dinosaures dinosaurs', paleontologist: 'paleontologue paleontologues paleontologists',
+  fossil: 'fossile fossiles fossils', researcher: 'chercheur chercheurs chercheuse chercheuses researchers scientifique scientifiques scientist scientists',
+  discovery: 'decouverte decouvertes decouvert decouverts discoveries discovered discover', methane: 'methane', regulation: 'reglement reglements reglementation regulations rules',
+  emission: 'emissions', tsunami: 'tsunamis', warning: 'alerte alertes warnings', evacuation: 'evacuations evacuate evacuer',
   indigenous: 'autochtone autochtones inuit inuits', trump: 'trumps', carney: 'carneys', gaza: 'gazaouis gazans',
 }).flatMap(([canon, words]) => words.split(/\s+/).map((w) => [w, canon])));
 
@@ -150,6 +156,30 @@ export function properNouns(text) {
     }
   }
   return set;
+}
+
+// Listes de mots-clés écrites naturellement (accents, majuscules), séparées par
+// des virgules. Préfixe « ~ » : terme ambigu, compte pour moitié. Les sigles
+// listés dans caseSensitive doivent apparaître en majuscules dans le texte.
+export function compileKeywords(list) {
+  const seen = new Set();
+  return list.split(',').map((k) => k.trim()).filter(Boolean).map((k) => {
+    const weak = k.startsWith('~');
+    const raw = weak ? k.slice(1).trim() : k;
+    return { raw, norm: normalize(raw), weight: weak ? 0.5 : 1 };
+  }).filter((k) => k.norm && !seen.has(k.norm) && seen.add(k.norm));
+}
+
+export function countKeywords(text, patterns, caseSensitive = new Set()) {
+  if (!text) return 0;
+  const hay = ` ${normalize(text)} `;
+  let n = 0;
+  for (const { raw, norm, weight } of patterns) {
+    if (!hay.includes(` ${norm} `)) continue;
+    if (caseSensitive.has(norm) && !new RegExp(`(^|[^\\p{L}])${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^\\p{L}])`, 'u').test(text)) continue;
+    n += weight;
+  }
+  return n;
 }
 
 export function detectLanguage(text) {

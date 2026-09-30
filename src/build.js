@@ -9,6 +9,7 @@ import { fetchAll, canonicalUrl } from './pipeline/fetch.js';
 import { detectLanguage } from './pipeline/text.js';
 import { tagArticle, REGIONS } from './pipeline/geo.js';
 import { scoreTone } from './pipeline/tone.js';
+import { tagTopics, TOPICS } from './pipeline/topics.js';
 import { clusterArticles } from './pipeline/cluster.js';
 import { buildStory } from './pipeline/analyze.js';
 import { summarize, pruneCache } from './pipeline/summarize.js';
@@ -38,6 +39,7 @@ function loadDemoArticles(sourcesById) {
     image: null,
     sourceId: a.s,
     feedRegion: sourcesById[a.s].feeds[0]?.region || null,
+    feedTopic: sourcesById[a.s].feeds[0]?.topic || null,
   }));
 }
 
@@ -88,7 +90,8 @@ async function main() {
     const source = sourcesById[a.sourceId];
     const text = `${a.title} ${a.description}`;
     a.lang = (text.split(/\s+/).length >= 8 && detectLanguage(text)) || source.lang;
-    a.tone = scoreTone(a.title);
+    a.topics = tagTopics(a);
+    a.tone = scoreTone(a.title, { disaster: a.topics.includes('disaster') });
   }
 
   // 3. Regroupement et analyse
@@ -97,12 +100,14 @@ async function main() {
   let stories = clusters.map((c) => buildStory(c, articles, sourcesById, regionScores, now));
   stories.sort((a, b) => b.score - a.score);
 
-  // Histoires multi-sources + quelques brèves récentes par région.
+  // Histoires multi-sources + brèves récentes par région et par thème (les
+  // découvertes scientifiques n'ont souvent qu'une source).
   const multi = stories.filter((s) => s.sourceCount >= 2);
-  const briefs = REGIONS.flatMap((r) => stories
-    .filter((s) => s.sourceCount === 1 && s.region === r)
-    .sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))
-    .slice(0, 25));
+  const singles = stories.filter((s) => s.sourceCount === 1).sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated));
+  const briefs = [...new Set([
+    ...REGIONS.flatMap((r) => singles.filter((s) => s.region === r).slice(0, 25)),
+    ...TOPICS.flatMap((t) => singles.filter((s) => s.topics.includes(t)).slice(0, 40)),
+  ])];
   stories = [...multi, ...briefs];
 
   // 4. Résumés IA (optionnels)
@@ -147,7 +152,7 @@ async function main() {
   writeJson(path.join(DIST, 'data/meta.json'), meta);
 
   if (!DEMO) {
-    writeJson(path.join(STATE, 'articles.json'), { articles: articles.map(({ tone, lang, ...a }) => a) });
+    writeJson(path.join(STATE, 'articles.json'), { articles: articles.map(({ tone, lang, topics, ...a }) => a) });
     writeJson(path.join(STATE, 'summaries.json'), summaryCache);
     writeJson(path.join(STATE, 'health.json'), healthByUrl);
   }
