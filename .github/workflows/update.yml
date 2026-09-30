@@ -1,0 +1,72 @@
+name: Actualiser Prisme
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: prisme-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      # Les flux RSS ne gardent que leurs derniers articles : on conserve
+      # l'historique des 72 dernières heures d'une exécution à l'autre.
+      - name: Restaurer l'état précédent
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: prisme-state-${{ github.run_id }}
+          restore-keys: prisme-state-
+
+      - name: Récupérer, regrouper et analyser
+        run: npm run build
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PRISME_MODEL: ${{ vars.PRISME_MODEL }}
+          PRISME_AI_LIMIT: ${{ vars.PRISME_AI_LIMIT }}
+          PRISME_AI_MIN_SOURCES: ${{ vars.PRISME_AI_MIN_SOURCES }}
+
+      - name: Sauvegarder l'état
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: prisme-state-${{ github.run_id }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

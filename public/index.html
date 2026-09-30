@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr-CA">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prisme — l'actualité sous tous ses angles</title>
+  <meta name="description" content="Agrégateur de nouvelles québécois : comparez comment les médias de gauche, du centre et de droite, francophones et anglophones, couvrent chaque histoire.">
+  <meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    try { const t = localStorage.getItem('prisme.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Aller au contenu</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/" aria-label="Prisme, accueil">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 29 27H3z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M16 3v24" stroke="var(--bias-left)" stroke-width="2.4"/><path d="M16 11 29 27" stroke="var(--bias-right)" stroke-width="2.4"/></svg>
+        <span class="brand-name">Prisme</span>
+      </a>
+      <div class="status" id="status" aria-live="polite"></div>
+      <form class="search" id="search-form" role="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="search" type="search" placeholder="Rechercher une histoire, un lieu, une personne…" aria-label="Rechercher" autocomplete="off">
+      </form>
+      <button class="icon-btn" id="settings-btn" type="button" aria-label="Préférences" aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  </header>
+
+  <div class="refresh-banner" id="refresh-banner" hidden>
+    <span id="refresh-text">De nouvelles histoires sont arrivées.</span>
+    <button type="button" id="refresh-btn">Afficher</button>
+  </div>
+
+  <main id="main" tabindex="-1"></main>
+
+  <footer class="footer">
+    <p><strong>Prisme</strong> regroupe automatiquement les nouvelles de plus de 100 médias et montre qui les couvre, et comment. Aucun compte, aucun pistage : vos préférences et votre historique restent sur cet appareil.</p>
+    <p><a href="#/sources">Sources et méthodologie</a> · <a href="https://github.com/olivierlangevingadbois-a11y/NEWS" rel="noopener">Code source</a></p>
+  </footer>
+
+  <dialog id="settings" aria-labelledby="settings-title">
+    <form method="dialog" class="settings">
+      <h2 id="settings-title">Préférences</h2>
+      <fieldset>
+        <legend>Langue des nouvelles</legend>
+        <label><input type="radio" name="lang" value="fr-first"> Français d'abord, anglais aussi</label>
+        <label><input type="radio" name="lang" value="fr-only"> Français seulement</label>
+        <label><input type="radio" name="lang" value="all"> Toutes les langues, sans préférence</label>
+      </fieldset>
+      <fieldset>
+        <legend>Accès</legend>
+        <label><input type="checkbox" name="hidePaywall"> Masquer les sites à abonnement obligatoire</label>
+      </fieldset>
+      <fieldset>
+        <legend>Thème</legend>
+        <label><input type="radio" name="theme" value="auto"> Automatique</label>
+        <label><input type="radio" name="theme" value="light"> Clair</label>
+        <label><input type="radio" name="theme" value="dark"> Sombre</label>
+      </fieldset>
+      <div class="settings-actions"><button value="close" class="btn">Fermer</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

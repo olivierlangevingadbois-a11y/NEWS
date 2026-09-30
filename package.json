@@ -1,0 +1,24 @@
+{
+  "name": "prisme",
+  "version": "1.0.0",
+  "description": "Agrégateur de nouvelles multiperspectives centré sur le Québec",
+  "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
+    "build": "node src/build.js",
+    "demo": "node src/build.js --fixtures",
+    "serve": "node scripts/serve.js"
+  },
+  "repository": {
+    "url": "git+https://github.com/olivierlangevingadbois-a11y/NEWS.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.129.0",
+    "fast-xml-parser": "^5.11.2"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}
