@@ -84,7 +84,8 @@ Le répertoire de lieux est généré une fois par `npm run gazetteer` et versio
 - Fait : arcs regroupés par pays d'origine (épaisseur selon le nombre de médias, couleur selon l'orientation moyenne), villes-sièges dans `HUB` (`public/lib.js`), légende « D'où vient la couverture ». Pastille « Lieu · Voir sur le globe » dans la page de l'histoire.
 
 ### Étape 6 — Finition
-- [ ] Mode sombre, mouvement réduit, mentions de licences, README, vérification sur mobile et ordinateur, captures.
+- [x] Mode sombre, mouvement réduit, mentions de licences, README, vérification sur mobile et ordinateur, captures.
+- Fait : mode sombre (y compris un changement de thème avec le globe ouvert), mouvement réduit, mentions de données (page Sources, README, carte), échantillon de 25 lieux dans le journal de construction pour vérifier la qualité sur les vraies nouvelles. Premier résultat réel : 562 histoires sur 729 localisées (77 %).
 
 ### Étape 7 — Optionnel, plus tard
 - [ ] Couche satellite activable, si une source aux conditions compatibles est confirmée.

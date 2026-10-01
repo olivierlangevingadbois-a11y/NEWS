@@ -169,6 +169,8 @@ async function main() {
   const located = multi.filter((st) => st.place);
   const byKind = located.reduce((m, st) => ({ ...m, [st.place.kind]: (m[st.place.kind] || 0) + 1 }), {});
   console.log(`Globe : ${located.length}/${multi.length} histoires localisées (${Math.round((100 * located.length) / (multi.length || 1))} %) — ${Object.entries(byKind).map(([k, n]) => `${n} ${k}`).join(', ')}`);
+  // Échantillon lisible dans les journaux de GitHub Actions pour vérifier les lieux retenus.
+  for (const st of multi.slice(0, 25)) console.log(`  ${(st.place ? `${st.place.name} (${st.place.kind})` : '—').padEnd(34)} ← ${st.title.slice(0, 90)}`);
 }
 
 main().catch((err) => {

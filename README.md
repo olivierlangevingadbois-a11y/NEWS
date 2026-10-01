@@ -23,6 +23,23 @@ Le site s'actualise tout seul : une tâche GitHub Actions relit les flux **toute
 | — | **Le Canada vu d'ailleurs** : les histoires canadiennes reprises par la presse étrangère. |
 | — | **Sciences, IA, environnement** : presse spécialisée (Québec Science, Agence Science-Presse, Nature, New Scientist, NASA, The Narwhal, Carbon Brief…) croisée avec la presse généraliste, filtres Espace, Santé et Catastrophes naturelles, et un encadré « Ici » pour l'angle québécois et canadien. |
 
+## Le Globe
+
+L'onglet **Globe** situe chaque histoire sur un globe en 3D. En choisir une nous y amène par un zoom arrière, un survol et un zoom avant, comme dans Google Earth.
+
+- **Points** : chaque histoire est un point, plus gros quand plus de médias la couvrent. Un clic sur un endroit chargé liste toutes les histoires qui s'y trouvent.
+- **Visite guidée** : une nouvelle toutes les 8 secondes. Les touches ← → passent d'une histoire à l'autre, l'espace lance ou arrête la visite, Échap l'arrête.
+- **Arcs de couverture** : ils partent de la ville où sont établis les médias de chaque pays, avec une épaisseur selon le nombre de médias et une couleur selon leur orientation moyenne.
+- **Filtre** : par région ou par thème. Chaque histoire a son lien direct (`#/globe/<id>`) et un bouton « Voir sur le globe » dans sa page.
+
+Comment le lieu est choisi : les noms de lieux cités dans les titres et descriptions sont cherchés dans un répertoire bilingue (`config/gazetteer.json`, 5 000 lieux tirés de GeoNames et Natural Earth). Le contexte lève les ambiguïtés : « à Québec » est la ville, « au Québec » la province, et London suit l'Ontario quand l'Ontario est cité. Le lieu le plus précis et le plus cité l'emporte. Une histoire sans lieu clair reste hors du globe : environ 75 % des histoires sont localisées. Le journal de chaque construction affiche ce pourcentage et un échantillon des lieux retenus.
+
+Pour corriger un lieu, ajouter un nom ou écarter un faux ami, modifiez `config/places-extra.json`, puis lancez `npm run gazetteer`.
+
+Le fond de carte (terres et frontières) fait partie du site. Les détails (côtes précises, routes, noms de lieux) viennent d'OpenFreeMap quand le service répond. Sinon, le globe reste utilisable avec un zoom moins rapproché. MapLibre GL est servi par le site lui-même, sans CDN.
+
+Données : GeoNames (CC BY 4.0), Natural Earth (domaine public), OpenFreeMap et © les contributeurs d'OpenStreetMap (ODbL), MapLibre GL (BSD-3).
+
 ## Mettre le site en ligne (5 minutes)
 
 1. **Activer GitHub Pages** : *Settings → Pages → Build and deployment → Source : GitHub Actions*.
@@ -61,6 +78,9 @@ src/pipeline/text.js     Normalisation bilingue FR/EN (lexique commun, noms prop
 src/pipeline/cluster.js  TF-IDF + regroupement agglomératif à liaison moyenne (histoires FR + EN réunies)
 src/pipeline/geo.js      Attribution des régions (lieux, institutions, personnalités)
 src/pipeline/topics.js   Thèmes : sciences (espace, santé), IA, environnement (catastrophes naturelles)
+src/pipeline/places.js   Lieu de chaque histoire pour le globe (répertoire config/gazetteer.json)
+scripts/build-gazetteer.js  Génère le répertoire de lieux et le fond de carte (npm run gazetteer)
+public/globe.js          Vue Globe (MapLibre GL, chargée à la demande)
 src/pipeline/tone.js     Ton de chaque titre (mots chargés, majuscules, points d'exclamation)
 src/pipeline/analyze.js  Couverture par orientation, angles morts, deux solitudes, provenance, propriété
 src/pipeline/summarize.js Résumés multiperspectives optionnels (API Claude), avec cache

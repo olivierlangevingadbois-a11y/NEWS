@@ -364,6 +364,7 @@ export function renderSources(ctx) {
       <li><strong>Ton par article.</strong> Le ton est évalué pour chaque titre, pas pour le média : un titre factuel d'un média partisan n'est pas pénalisé, et un titre sensationnaliste est signalé où qu'il soit publié.</li>
       <li><strong>Angles morts.</strong> Une histoire est un angle mort quand au moins trois médias d'un côté la couvrent et que l'autre côté l'ignore presque (15 % ou moins). Les « deux solitudes » sont les histoires canadiennes couvertes dans une seule langue officielle.</li>
       <li><strong>Résumés.</strong> Si une clé API est configurée, un résumé neutre est généré par IA pour les histoires les plus couvertes, avec le cadrage de chaque camp. Il est toujours identifié comme tel.</li>
+      <li><strong>Globe.</strong> Le lieu d'une histoire est déduit des noms de lieux cités dans ses titres et descriptions : le plus précis et le plus cité l'emporte. Une histoire sans lieu clair reste hors du globe. Les arcs partent de la ville où sont établis les médias de chaque pays. Données : GeoNames (CC BY 4.0), Natural Earth, OpenFreeMap et © les contributeurs d'OpenStreetMap.</li>
       <li><strong>Vie privée.</strong> Aucun compte ni témoin de pistage. Votre profil de lecture est calculé et conservé dans votre navigateur seulement.</li>
     </ul>
   </details>
