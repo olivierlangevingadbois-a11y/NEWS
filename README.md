@@ -48,6 +48,26 @@ Données : GeoNames (CC BY 4.0), Natural Earth (domaine public), OpenFreeMap et 
 
 > Les tâches planifiées de GitHub ne tournent que sur la **branche par défaut** du dépôt. Si ce code arrive par une autre branche, fusionnez-la dans la branche par défaut, ou faites-en la branche par défaut. GitHub suspend aussi les tâches planifiées d'un dépôt public après 60 jours sans activité : un simple commit ou un lancement manuel les réactive.
 
+### Actualisation fiable toutes les 20 minutes
+
+GitHub retarde souvent les tâches planifiées des dépôts gratuits : en pratique, il les lance parfois aux 3 à 7 heures. Pour une vraie actualisation aux 20 minutes, un service externe gratuit déclenche la mise à jour :
+
+1. **Jeton GitHub.** *Settings (profil) → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*. Accès limité au dépôt `NEWS`, permission **Actions : Read and write**, expiration d'un an.
+2. **[cron-job.org](https://cron-job.org)** (gratuit) → *Create cronjob* :
+   - URL : `https://api.github.com/repos/olivierlangevingadbois-a11y/NEWS/actions/workflows/update.yml/dispatches`
+   - Horaire : toutes les 20 minutes.
+   - Onglet *Advanced* : méthode **POST**. En-têtes : `Authorization: Bearer <jeton>`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `Content-Type: application/json`.
+   - Corps : `{"ref":"<branche par défaut>"}`, par exemple `{"ref":"main"}`.
+3. **Vérification.** Un test doit répondre **204**. Une exécution « workflow_dispatch » apparaît alors dans l'onglet *Actions*.
+
+En cas d'erreur, le code renvoyé indique la cause :
+- 401 : jeton invalide ;
+- 403 : la permission Actions manque ;
+- 404 : URL erronée, ou jeton non autorisé sur ce dépôt ;
+- 422 : nom de branche erroné dans `ref`.
+
+Le jeton ne permet que de lancer les tâches GitHub de ce dépôt. S'il fuit, révoquez-le à la même page.
+
 ### Variables facultatives (*Settings → Secrets and variables → Actions → Variables*)
 
 | Variable | Défaut | Rôle |
