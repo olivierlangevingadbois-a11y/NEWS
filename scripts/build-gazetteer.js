@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { feature } from 'topojson-client';
+import { feature, mesh } from 'topojson-client';
 import countries from 'i18n-iso-countries';
 import { normalize } from '../src/pipeline/text.js';
 
@@ -16,6 +16,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cities = require('all-the-cities');
 const admin1Names = require('cities.json/admin1.json');
 const world = require('world-atlas/countries-110m.json');
+const land = require('world-atlas/land-110m.json');
 countries.registerLocale(require('i18n-iso-countries/langs/fr.json'));
 countries.registerLocale(require('i18n-iso-countries/langs/en.json'));
 const extra = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/places-extra.json'), 'utf8'));
@@ -160,5 +161,19 @@ const out = {
   flags,
 };
 fs.writeFileSync(path.join(ROOT, 'config/gazetteer.json'), JSON.stringify(out));
+
+// Fond de carte de secours pour le globe : terres et frontières (Natural Earth 1:110 M),
+// toujours disponible même si le fournisseur de tuiles détaillées ne répond pas.
+const q = (coords) => (typeof coords[0] === 'number' ? coords.map((x) => round(x, 2)) : coords.map(q));
+const basemap = {
+  type: 'FeatureCollection',
+  features: [
+    ...feature(land, land.objects.land).features.map((f) => ({ type: 'Feature', properties: { kind: 'land' }, geometry: { ...f.geometry, coordinates: q(f.geometry.coordinates) } })),
+    { type: 'Feature', properties: { kind: 'border' }, geometry: (({ type, coordinates }) => ({ type, coordinates: q(coordinates) }))(mesh(world, world.objects.countries, (a, b) => a !== b)) },
+  ],
+};
+fs.mkdirSync(path.join(ROOT, 'public/geo'), { recursive: true });
+fs.writeFileSync(path.join(ROOT, 'public/geo/world.json'), JSON.stringify(basemap));
+console.log(`Fond de carte : ${(fs.statSync(path.join(ROOT, 'public/geo/world.json')).size / 1024).toFixed(0)} Ko`);
 const kinds = places.reduce((m, p) => ({ ...m, [p.k]: (m[p.k] || 0) + 1 }), {});
 console.log(`Répertoire : ${places.length} lieux (${Object.entries(kinds).map(([k, n]) => `${n} ${k}`).join(', ')}), ${index.size} noms, ${(fs.statSync(path.join(ROOT, 'config/gazetteer.json')).size / 1024).toFixed(0)} Ko`);

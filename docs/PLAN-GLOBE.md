@@ -63,18 +63,20 @@ Le répertoire de lieux est généré une fois par `npm run gazetteer` et versio
 - Fait : `story.place` et `story.places` dans `stories.json`. Ligne « Globe : X/Y histoires localisées » dans le journal de construction. Démo : 19 histoires sur 20 localisées. Environ 0,7 s pour 5 750 articles.
 
 ### Étape 3 — Le globe (`public/globe.js`, route `#/globe`)
-- [ ] Copie de MapLibre dans `dist/vendor/maplibre/` et chargement à la demande.
-- [ ] Style maison : `dist/data/world.json` (Natural Earth) aux couleurs du thème, plus les détails OpenFreeMap.
-- [ ] Points des histoires, vol vers l'histoire choisie, carte de l'histoire superposée (titre, barre d'orientation, sources, lien vers la comparaison).
-- [ ] Clic sur un endroit chargé : liste des histoires à cet endroit.
-- [ ] Onglet « Globe ».
+- [x] Copie de MapLibre dans `dist/vendor/maplibre/` et chargement à la demande.
+- [x] Style maison : `dist/data/world.json` (Natural Earth) aux couleurs du thème, plus les détails OpenFreeMap.
+- [x] Points des histoires, vol vers l'histoire choisie, carte de l'histoire superposée (titre, barre d'orientation, sources, lien vers la comparaison).
+- [x] Clic sur un endroit chargé : liste des histoires à cet endroit.
+- [x] Onglet « Globe ».
+- Fait : `public/globe.js` (chargé à la demande). Fond Natural Earth intégré au site. Détails OpenFreeMap ajoutés seulement si le service répond, avec un zoom plafonné à 5,5 sinon. Piège rencontré : la feuille de style de MapLibre impose `position: relative` au conteneur, d'où le sélecteur `.globe-page .globe-map`. Tests de rendu dans Chromium sans écran avec `--use-angle=swiftshader`.
 
 ### Étape 4 — Visite guidée et navigation
-- [ ] Boutons précédent et suivant, lecture automatique (une histoire toutes les 8 secondes, barre de progression), pause.
-- [ ] Clavier : ← → pour naviguer, espace pour lire ou mettre en pause, Échap pour arrêter.
-- [ ] Filtre par région ou thème.
-- [ ] Lien profond `#/globe/<id>`.
-- [ ] Panneau en bas de l'écran sur mobile.
+- [x] Boutons précédent et suivant, lecture automatique (une histoire toutes les 8 secondes, barre de progression), pause.
+- [x] Clavier : ← → pour naviguer, espace pour lire ou mettre en pause, Échap pour arrêter.
+- [x] Filtre par région ou thème.
+- [x] Lien profond `#/globe/<id>`.
+- [x] Panneau en bas de l'écran sur mobile.
+- Fait : visite guidée (8 secondes par histoire, barre de progression), ← → espace Échap, filtre par région ou thème, lien profond `#/globe/<id>` (mis à jour sans recharger), panneau en bas de l'écran sous 700 px.
 
 ### Étape 5 — Arcs de couverture et liens depuis les histoires
 - [ ] Arcs de grand cercle depuis la ville-siège de chaque pays de média, colorés selon l'orientation, avec légende.

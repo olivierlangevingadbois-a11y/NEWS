@@ -50,6 +50,7 @@ function renderTabs() {
     ...TOPIC_ORDER.map((t) => link(`theme/${t}`, t === 'ai' ? 'IA' : TOPIC_LABEL[t])),
     '<span class="sep" aria-hidden="true"></span>',
     link('angles-morts', 'Angles morts'),
+    link('globe', 'Globe'),
   ].join('');
   // Sur mobile, l'onglet actif peut être hors de vue : on le centre dans la barre.
   const tabs = document.getElementById('tabs');
@@ -61,10 +62,43 @@ function renderTabs() {
   }
 }
 
+// ---------- Globe (chargé à la demande) ----------
+
+let globe = null;
+
+function setHeaderHeight() {
+  document.documentElement.style.setProperty('--header-h', `${document.querySelector('.topbar').offsetHeight}px`);
+}
+window.addEventListener('resize', setHeaderHeight);
+
+async function renderGlobe(storyId) {
+  document.body.classList.add('globe-mode');
+  document.title = 'Globe — Prisme';
+  setHeaderHeight();
+  if (!globe) {
+    main.innerHTML = '<div class="globe-loading">Chargement du globe…</div>';
+    try {
+      globe = await import('./globe.js');
+    } catch (err) {
+      main.innerHTML = `<div class="empty">Impossible de charger le globe (${esc(err.message)}).</div>`;
+      return;
+    }
+    if (route().name !== 'globe') return;
+  }
+  if (globe.globeMounted() && main.querySelector('#globe-map')) globe.updateGlobe(ctx, storyId);
+  else globe.mountGlobe(main, ctx, storyId);
+}
+
 function render({ keepScroll = false } = {}) {
   const { name, arg } = route();
   renderTabs();
   if (!ctx.meta) return;
+  if (name === 'globe') {
+    renderGlobe(arg);
+    return;
+  }
+  if (globe?.globeMounted()) globe.destroyGlobe();
+  document.body.classList.remove('globe-mode');
   const views = {
     home: () => renderHome(ctx),
     region: () => (REGION_LABEL[arg] ? renderRegion(ctx, arg) : renderHome(ctx)),

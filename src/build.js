@@ -125,6 +125,12 @@ async function main() {
   // 5. Écriture
   fs.rmSync(DIST, { recursive: true, force: true });
   fs.cpSync(path.join(ROOT, 'public'), DIST, { recursive: true });
+  // MapLibre (globe) servi depuis le site lui-même, sans CDN.
+  const maplibre = path.join(ROOT, 'node_modules/maplibre-gl');
+  const vendor = path.join(DIST, 'vendor/maplibre');
+  fs.mkdirSync(vendor, { recursive: true });
+  for (const f of ['maplibre-gl.mjs', 'maplibre-gl-shared.mjs', 'maplibre-gl-worker.mjs', 'maplibre-gl.css']) fs.copyFileSync(path.join(maplibre, 'dist', f), path.join(vendor, f));
+  fs.copyFileSync(path.join(maplibre, 'LICENSE.txt'), path.join(vendor, 'LICENSE.txt'));
 
   const prevHealth = readJson(path.join(STATE, 'health.json'), {});
   const healthByUrl = {};
