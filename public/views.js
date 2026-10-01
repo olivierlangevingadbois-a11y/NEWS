@@ -303,7 +303,7 @@ export function renderStory(ctx, id) {
     <a class="back" href="#/" data-back>← Retour</a>
     <div class="kicker">${story.regions.map((r) => `<a class="region" href="#/region/${r}">${esc(REGION_LABEL[r])}</a>`).join('')}${(story.topics || []).map((t) => `<a class="topic" href="#/theme/${t}">${esc(TOPIC_LABEL[t])}</a>`).join('')}<span>Première mention ${esc(timeAgo(story.firstSeen))}</span><span>Mise à jour ${esc(timeAgo(story.updated))}</span></div>
     <h1>${esc(displayTitle(story, ctx))}</h1>
-    <div class="meta">${flags(story)}</div>
+    <div class="meta">${story.place ? `<a class="flag globe-link" href="#/globe/${esc(story.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>${esc(story.place.name)} · Voir sur le globe</a>` : ''}${flags(story)}</div>
     ${img}
     ${summaryBlock(story, ctx)}
     ${coverageBlock(story, ctx)}

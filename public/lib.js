@@ -24,6 +24,13 @@ export const COUNTRY = {
   RU: 'Russie', EU: 'Europe', QA: 'Qatar', HK: 'Hong Kong', IN: 'Inde', JP: 'Japon', SG: 'Singapour', KR: 'Corée du Sud', IL: 'Israël',
   PK: 'Pakistan', CN: 'Chine', LB: 'Liban', ZA: 'Afrique du Sud', NG: 'Nigeria', KE: 'Kenya', AU: 'Australie', NZ: 'Nouvelle-Zélande', NC: 'Nouvelle-Calédonie',
 };
+// Ville-siège des médias de chaque pays : point de départ des arcs de couverture du globe.
+export const HUB = {
+  QC: [-73.57, 45.5], CA: [-79.38, 43.65], US: [-74.0, 40.71], FR: [2.35, 48.86], GB: [-0.13, 51.51], BE: [4.35, 50.85], CH: [6.15, 46.2],
+  DE: [13.4, 52.52], UA: [30.52, 50.45], RU: [37.62, 55.76], EU: [4.84, 45.76], QA: [51.53, 25.29], HK: [114.17, 22.32], IN: [77.21, 28.61],
+  JP: [139.69, 35.68], SG: [103.82, 1.35], KR: [126.98, 37.57], IL: [35.21, 31.77], PK: [67.0, 24.86], CN: [116.4, 39.9], LB: [35.5, 33.89],
+  ZA: [28.05, -26.2], NG: [7.5, 9.06], KE: [36.82, -1.29], AU: [151.21, -33.87], NZ: [174.78, -41.29], NC: [166.44, -22.27],
+};
 export const OWNERSHIP = {
   public: 'Radiodiffuseur public', state: 'Contrôlé par un État', nonprofit: 'OBNL ou fiducie', coop: 'Coopérative', independent: 'Indépendant',
   family: 'Famille ou milliardaire', corporate: 'Grand groupe', fund: "Fonds d'investissement",

@@ -79,8 +79,9 @@ Le répertoire de lieux est généré une fois par `npm run gazetteer` et versio
 - Fait : visite guidée (8 secondes par histoire, barre de progression), ← → espace Échap, filtre par région ou thème, lien profond `#/globe/<id>` (mis à jour sans recharger), panneau en bas de l'écran sous 700 px.
 
 ### Étape 5 — Arcs de couverture et liens depuis les histoires
-- [ ] Arcs de grand cercle depuis la ville-siège de chaque pays de média, colorés selon l'orientation, avec légende.
-- [ ] Dans la page d'une histoire : nom du lieu et bouton « Voir sur le globe ».
+- [x] Arcs de grand cercle depuis la ville-siège de chaque pays de média, colorés selon l'orientation, avec légende.
+- [x] Dans la page d'une histoire : nom du lieu et bouton « Voir sur le globe ».
+- Fait : arcs regroupés par pays d'origine (épaisseur selon le nombre de médias, couleur selon l'orientation moyenne), villes-sièges dans `HUB` (`public/lib.js`), légende « D'où vient la couverture ». Pastille « Lieu · Voir sur le globe » dans la page de l'histoire.
 
 ### Étape 6 — Finition
 - [ ] Mode sombre, mouvement réduit, mentions de licences, README, vérification sur mobile et ordinateur, captures.

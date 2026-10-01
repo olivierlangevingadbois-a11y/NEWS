@@ -2,7 +2,7 @@
 // zoom arrière, un survol et un zoom avant. Chargée à la demande (MapLibre ≈ 1 Mo).
 import * as maplibregl from './vendor/maplibre/maplibre-gl.mjs';
 import {
-  REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, SUBTOPIC_LABEL, esc, timeAgo, plural, biasBar, biasSummary,
+  REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, SUBTOPIC_LABEL, COUNTRY, HUB, BIAS_BY_KEY, esc, timeAgo, plural, biasBar, biasSummary,
 } from './lib.js';
 import { visibleStories } from './views.js';
 
@@ -22,8 +22,10 @@ const narrow = () => matchMedia('(max-width: 700px)').matches;
 
 function palette() {
   return isDark()
-    ? { ocean: '#0e181b', land: '#2b2b26', border: '#4d4b43', road: '#3e3d37', label: '#c3c2b7', halo: '#0e181b', sky: '#121211', horizon: '#1c2a2f', dot: cssVar('--accent') || '#3fb8ac', ring: '#f4f3ef' }
-    : { ocean: '#cddde3', land: '#ebe8df', border: '#a9a499', road: '#d8d2c4', label: '#54524d', halo: '#ebe8df', sky: '#f7f6f3', horizon: '#e3ecef', dot: cssVar('--accent') || '#0e7c74', ring: '#151513' };
+    ? { ocean: '#0e181b', land: '#2b2b26', border: '#4d4b43', road: '#3e3d37', label: '#c3c2b7', halo: '#0e181b', sky: '#121211', horizon: '#1c2a2f', dot: cssVar('--accent') || '#3fb8ac', ring: '#f4f3ef',
+      bias: { left: '#8f84ee', cleft: '#7a72c9', center: '#9a988f', cright: '#b08a3e', right: '#c98500', state: '#a3a198' } }
+    : { ocean: '#cddde3', land: '#ebe8df', border: '#a9a499', road: '#d8d2c4', label: '#54524d', halo: '#ebe8df', sky: '#f7f6f3', horizon: '#e3ecef', dot: cssVar('--accent') || '#0e7c74', ring: '#151513',
+      bias: { left: '#5b4bc4', cleft: '#8a7fdc', center: '#7d7a72', cright: '#c9952e', right: '#b87800', state: '#57554f' } };
 }
 
 // Style maison : le fond Natural Earth est intégré au site et s'affiche toujours.
@@ -93,9 +95,83 @@ function storyFeatures(stories) {
   });
 }
 
+// ---------- Arcs de couverture : d'où viennent les médias qui couvrent l'histoire ----------
+
+const toVec = ([lon, lat]) => {
+  const l = (lon * Math.PI) / 180, p = (lat * Math.PI) / 180;
+  return [Math.cos(p) * Math.cos(l), Math.cos(p) * Math.sin(l), Math.sin(p)];
+};
+const toLonLat = ([x, y, z]) => [(Math.atan2(y, x) * 180) / Math.PI, (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI];
+
+// Arc de grand cercle, longitudes « déroulées » pour franchir l'antiméridien sans saut.
+function greatCircle(from, to, steps = 48) {
+  const a = toVec(from), b = toVec(to);
+  const omega = Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
+  if (omega < 0.01) return null;
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const k1 = Math.sin((1 - t) * omega) / Math.sin(omega), k2 = Math.sin(t * omega) / Math.sin(omega);
+    const p = toLonLat([k1 * a[0] + k2 * b[0], k1 * a[1] + k2 * b[1], k1 * a[2] + k2 * b[2]]);
+    if (pts.length) while (p[0] - pts[pts.length - 1][0] > 180) p[0] -= 360;
+    if (pts.length) while (p[0] - pts[pts.length - 1][0] < -180) p[0] += 360;
+    pts.push(p);
+  }
+  return pts;
+}
+
+function bucketForMean(mean) {
+  if (mean == null) return 'state';
+  if (mean <= -1.5) return 'left';
+  if (mean <= -0.5) return 'cleft';
+  if (mean < 0.5) return 'center';
+  if (mean < 1.5) return 'cright';
+  return 'right';
+}
+
+// Médias regroupés par pays d'origine, avec l'orientation moyenne de ces médias.
+function coverageByCountry(s) {
+  const groups = new Map();
+  for (const a of s.articles) {
+    const src = G.ctx.sourcesById[a.source];
+    if (!src) continue;
+    const g = groups.get(src.country) || { cc: src.country, n: 0, sum: 0, rated: 0 };
+    g.n++;
+    if (src.bias != null) { g.sum += src.bias; g.rated++; }
+    groups.set(src.country, g);
+  }
+  return [...groups.values()].map((g) => ({ ...g, bucket: bucketForMean(g.rated ? g.sum / g.rated : null) })).sort((a, b) => b.n - a.n);
+}
+
+function arcsData(s) {
+  const features = [];
+  if (!s) return { type: 'FeatureCollection', features };
+  const c = palette();
+  const dest = [s.place.lon, s.place.lat];
+  for (const g of coverageByCountry(s)) {
+    const hub = HUB[g.cc];
+    if (!hub) continue;
+    const color = c.bias[g.bucket];
+    features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: hub }, properties: { kind: 'hub', n: g.n, color } });
+    const line = greatCircle(hub, dest);
+    if (line) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { kind: 'arc', n: g.n, color } });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
 function addStoryLayers() {
   const { map } = G;
   const c = palette();
+  map.addSource('arcs', { type: 'geojson', data: arcsData(G.selected) });
+  map.addLayer({
+    id: 'arcs', type: 'line', source: 'arcs', filter: ['==', ['get', 'kind'], 'arc'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': ['+', 1, ['*', 0.9, ['get', 'n']]], 'line-opacity': 0.8 },
+  });
+  map.addLayer({
+    id: 'hubs', type: 'circle', source: 'arcs', filter: ['==', ['get', 'kind'], 'hub'],
+    paint: { 'circle-radius': ['+', 3, ['get', 'n']], 'circle-color': ['get', 'color'], 'circle-stroke-color': c.land, 'circle-stroke-width': 1.5 },
+  });
   map.addSource('stories', { type: 'geojson', data: { type: 'FeatureCollection', features: storyFeatures(G.list) }, promoteId: 'id' });
   const size = ['sqrt', ['get', 'n']];
   map.addLayer({
@@ -132,6 +208,7 @@ function storyCard(s) {
     ${biasBar(s.bias)}
     <div class="meta"><strong>${plural(s.sourceCount, 'source', 'sources')}</strong><span>${esc(biasSummary(s.bias))}</span></div>
     ${s.lead ? `<p class="lead">${esc(s.lead)}</p>` : ''}
+    <div class="gfrom"><h3>D'où vient la couverture</h3><div class="chips">${coverageByCountry(s).map((g) => `<span class="chip" title="${esc(BIAS_BY_KEY[g.bucket].label)} en moyenne"><span class="swatch" style="--c:${palette().bias[g.bucket]}"></span>${esc(COUNTRY[g.cc] || g.cc)} <b>${g.n}</b></span>`).join('')}</div></div>
     <div class="gcard-foot"><a class="btn" href="#/histoire/${esc(s.id)}">Comparer la couverture →</a><span class="gpos">${i + 1} / ${G.list.length}</span></div>
   </article>`;
 }
@@ -175,6 +252,7 @@ function select(s, { flyTo = true } = {}) {
   G.selected = s;
   G.ctx.ui.globeStory = s?.id || null;
   if (G.map.getLayer('stories-halo')) G.map.setFilter('stories-halo', ['==', ['get', 'id'], s?.id || '']);
+  G.map.getSource('arcs')?.setData(arcsData(s));
   history.replaceState(null, '', s ? `#/globe/${s.id}` : '#/globe');
   renderPanel();
   if (s && flyTo) fly(s);
@@ -236,6 +314,7 @@ function refreshData() {
   computeList();
   if (G.selected) G.selected = G.list.find((s) => s.id === G.selected.id) || null;
   G.map.getSource('stories')?.setData({ type: 'FeatureCollection', features: storyFeatures(G.list) });
+  G.map.getSource('arcs')?.setData(arcsData(G.selected));
   renderPanel();
 }
 

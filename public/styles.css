@@ -313,3 +313,9 @@ a.btn { text-decoration: none; display: inline-block; }
   :root:not([data-theme="light"]) .maplibregl-ctrl-group, :root:not([data-theme="light"]) .maplibregl-ctrl-attrib { background: var(--surface-2); color: var(--text-2); }
   :root:not([data-theme="light"]) .maplibregl-ctrl-group button .maplibregl-ctrl-icon { filter: invert(1); }
 }
+.gfrom { margin-top: 12px; }
+.gfrom h3 { font: 600 .72rem/1.2 var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); margin: 0 0 6px; }
+.gfrom .chip { display: inline-flex; align-items: center; gap: 5px; }
+.globe-link { text-decoration: none; background: var(--accent-soft); color: var(--accent); }
+.globe-link svg { width: 13px; height: 13px; }
+.globe-link:hover { text-decoration: underline; }
