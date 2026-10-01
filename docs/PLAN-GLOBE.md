@@ -39,15 +39,16 @@ Le répertoire de lieux est généré une fois par `npm run gazetteer` et versio
 - [x] Ce document.
 
 ### Étape 1 — Répertoire de lieux (`scripts/build-gazetteer.js` → `config/gazetteer.json`)
-- [ ] Pays : centre et emprise tirés de Natural Earth, avec repli sur la capitale. Noms FR et EN, gentilés.
-- [ ] Provinces et États (Canada, États-Unis, Australie) : centre pondéré par la population des villes, noms FR.
-- [ ] Villes : population d'au moins 100 000 dans le monde, d'au moins 5 000 au Canada, et toutes les capitales.
-- [ ] Ajouts manuels (`config/places-extra.json`) :
+- [x] Pays : centre et emprise tirés de Natural Earth, avec repli sur la capitale. Noms FR et EN, gentilés.
+- [x] Provinces et États (Canada, États-Unis, Australie) : centre pondéré par la population des villes, noms FR.
+- [x] Villes : population d'au moins 100 000 dans le monde, d'au moins 5 000 au Canada, et toutes les capitales.
+- [x] Ajouts manuels (`config/places-extra.json`) :
   - exonymes français (Londres, Pékin, Le Caire…) ;
   - lieux québécois ;
   - métonymies (Kremlin, Maison-Blanche, colline du Parlement…) ;
   - liste noire des faux amis (Nice, Mobile, Reading, Sale, Tours…).
-- [ ] Tests sur le contenu du répertoire.
+- [x] Tests sur le contenu du répertoire.
+- Fait : 5 083 lieux (245 pays, 72 provinces et États, 4 722 villes, 44 régions), 5 395 noms, 560 Ko. Régénérer avec `npm run gazetteer` après toute modification de `config/places-extra.json`.
 
 ### Étape 2 — Géocodage des histoires (`src/pipeline/places.js`)
 - [ ] Repérage des lieux, du nom le plus long au plus court, avec majuscule exigée dans le texte original.
