@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { clusterRegions } from './geo.js';
 import { clusterTopics } from './topics.js';
+import { locateStory } from './places.js';
 
 export const FACT_SCORE = { 'very-high': 5, high: 4, mostly: 3, mixed: 2, low: 1 };
 const BUCKETS = ['left', 'cleft', 'center', 'cright', 'right'];
@@ -59,6 +60,7 @@ export function buildStory(cluster, articles, sourcesById, regionScores, now) {
 
   const { primary, regions, weights } = clusterRegions(items.map((it) => it.geo));
   const { topics, subtopics } = clusterTopics(items.map((it) => it.a.topics));
+  const { place, places } = locateStory(items.map((it) => it.a.mentions));
 
   // Deux solitudes : couverture canadienne entièrement dans une seule langue.
   const canadian = unique.filter((it) => ['QC', 'CA'].includes(sourcesById[it.a.sourceId].country));
@@ -113,6 +115,8 @@ export function buildStory(cluster, articles, sourcesById, regionScores, now) {
     regionWeights: weights,
     topics,
     subtopics,
+    place,
+    places,
     keywords: cluster.keywords,
     sourceCount: unique.length,
     articleCount: items.length,

@@ -51,15 +51,16 @@ Le répertoire de lieux est généré une fois par `npm run gazetteer` et versio
 - Fait : 5 083 lieux (245 pays, 72 provinces et États, 4 722 villes, 44 régions), 5 395 noms, 560 Ko. Régénérer avec `npm run gazetteer` après toute modification de `config/places-extra.json`.
 
 ### Étape 2 — Géocodage des histoires (`src/pipeline/places.js`)
-- [ ] Repérage des lieux, du nom le plus long au plus court, avec majuscule exigée dans le texte original.
-- [ ] Désambiguïsation :
+- [x] Repérage des lieux, du nom le plus long au plus court, avec majuscule exigée dans le texte original.
+- [x] Désambiguïsation :
   - « au Québec » désigne la province, « à Québec » la ville ;
   - London (Ontario) l'emporte si l'Ontario est cité ;
   - sinon, la plus grande population.
-- [ ] Pondération : titre plus que description, ville plus que province plus que pays plus que métonymie. Bonus quand la ville et son pays sont tous deux cités.
-- [ ] Agrégation par histoire : `story.place = { name, lat, lon, kind, country, zoom }`, plus `story.places` (jusqu'à 3 lieux).
-- [ ] Statistiques dans le journal de construction : pourcentage d'histoires localisées, par précision.
-- [ ] Tests, dont les fixtures avec le lieu attendu.
+- [x] Pondération : titre plus que description, ville plus que province plus que pays plus que métonymie. Bonus quand la ville et son pays sont tous deux cités.
+- [x] Agrégation par histoire : `story.place = { name, lat, lon, kind, country, zoom }`, plus `story.places` (jusqu'à 3 lieux).
+- [x] Statistiques dans le journal de construction : pourcentage d'histoires localisées, par précision.
+- [x] Tests, dont les fixtures avec le lieu attendu.
+- Fait : `story.place` et `story.places` dans `stories.json`. Ligne « Globe : X/Y histoires localisées » dans le journal de construction. Démo : 19 histoires sur 20 localisées. Environ 0,7 s pour 5 750 articles.
 
 ### Étape 3 — Le globe (`public/globe.js`, route `#/globe`)
 - [ ] Copie de MapLibre dans `dist/vendor/maplibre/` et chargement à la demande.

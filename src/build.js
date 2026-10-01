@@ -10,6 +10,7 @@ import { detectLanguage } from './pipeline/text.js';
 import { tagArticle, REGIONS } from './pipeline/geo.js';
 import { scoreTone } from './pipeline/tone.js';
 import { tagTopics, TOPICS } from './pipeline/topics.js';
+import { articleMentions } from './pipeline/places.js';
 import { clusterArticles } from './pipeline/cluster.js';
 import { buildStory } from './pipeline/analyze.js';
 import { summarize, pruneCache } from './pipeline/summarize.js';
@@ -91,6 +92,7 @@ async function main() {
     const text = `${a.title} ${a.description}`;
     a.lang = (text.split(/\s+/).length >= 8 && detectLanguage(text)) || source.lang;
     a.topics = tagTopics(a);
+    a.mentions = articleMentions(a);
     a.tone = scoreTone(a.title, { disaster: a.topics.includes('disaster') });
   }
 
@@ -152,12 +154,15 @@ async function main() {
   writeJson(path.join(DIST, 'data/meta.json'), meta);
 
   if (!DEMO) {
-    writeJson(path.join(STATE, 'articles.json'), { articles: articles.map(({ tone, lang, topics, ...a }) => a) });
+    writeJson(path.join(STATE, 'articles.json'), { articles: articles.map(({ tone, lang, topics, mentions, ...a }) => a) });
     writeJson(path.join(STATE, 'summaries.json'), summaryCache);
     writeJson(path.join(STATE, 'health.json'), healthByUrl);
   }
 
   console.log(`${multi.length} histoires multi-sources, ${briefs.length} brèves, ${meta.ai.generated} résumés IA générés, ${meta.buildSeconds} s`);
+  const located = multi.filter((st) => st.place);
+  const byKind = located.reduce((m, st) => ({ ...m, [st.place.kind]: (m[st.place.kind] || 0) + 1 }), {});
+  console.log(`Globe : ${located.length}/${multi.length} histoires localisées (${Math.round((100 * located.length) / (multi.length || 1))} %) — ${Object.entries(byKind).map(([k, n]) => `${n} ${k}`).join(', ')}`);
 }
 
 main().catch((err) => {
