@@ -68,6 +68,24 @@ const rank = (i) => {
   return (p.k === 'country' ? 3e9 : p.k === 'admin' ? 2e9 : 0) + (p.p || 0);
 };
 
+// Précision d'un lieu : ville, région, province ou État, pays. Les grandes
+// régions (Sahel, Moyen-Orient) sont moins précises qu'un pays.
+const LEVEL = { city: 4, region: 3, admin: 2, country: 1 };
+const level = (p) => (p.k === 'region' && p.z < 5 ? 0 : LEVEL[p.k]);
+const km = (a, b) => {
+  const rad = Math.PI / 180;
+  const h = Math.sin(((b.la - a.la) * rad) / 2) ** 2 + Math.cos(a.la * rad) * Math.cos(b.la * rad) * Math.sin(((b.lo - a.lo) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+};
+// Le lieu inner est-il dans outer ? Même pays, même province, ou près du centre de la région.
+function contains(outer, inner) {
+  if (outer.k === 'country') return inner.c === outer.c;
+  if (outer.k === 'admin') return inner.a === outer.a;
+  if (outer.k !== 'region' || (outer.c && inner.c && inner.c !== outer.c)) return false;
+  const at = inner.k !== 'city' && inner.an != null ? G.places[inner.an] : inner;
+  return km(outer, at) <= 20000 / 2 ** outer.z;
+}
+
 // Choisit le lieu d'une histoire à partir des mentions de tous ses articles.
 export function locateStory(articleMentionList) {
   // 1. Contexte : pays et provinces cités sans ambiguïté, et gentilés.
@@ -146,21 +164,23 @@ export function locateStory(articleMentionList) {
     total.set(i, t);
   }
   const ranked = [...total.entries()].sort((a, b) => b[1] - a[1]);
-  let [best, bestScore] = ranked[0];
-  // Préférer le lieu le plus précis à l'intérieur du lieu retenu.
-  const top = G.places[best];
-  if (top.k === 'country' || top.k === 'admin') {
-    const child = ranked.find(([i]) => {
-      const p = G.places[i];
-      return i !== best && p.k !== 'country' && (top.k === 'country' ? p.c === top.c : p.a === top.a);
-    });
-    if (child && scores.get(child[0]) >= 0.4 * scores.get(best)) [best, bestScore] = child;
+  if (ranked[0][1] < MIN_SCORE) return { place: null, places: [] };
+  // 4. Du lieu retenu, on descend vers le lieu cité le plus précis qu'il contient :
+  //    pays → province ou État → région → ville (le mieux noté à chaque niveau).
+  let best = ranked[0][0];
+  for (;;) {
+    const outer = G.places[best];
+    const child = ranked.find(([i]) => level(G.places[i]) > level(outer) && contains(outer, G.places[i]));
+    if (!child) break;
+    best = child[0];
   }
-  if (bestScore < MIN_SCORE) return { place: null, places: [] };
 
+  // 5. Sans ville citée, le point va sur le repère du lieu : capitale du pays ou
+  //    de la province, ville principale de la région (voir scripts/build-gazetteer.js).
   const toPlace = (i) => {
     const p = G.places[i];
-    return { name: p.n, kind: p.k, lat: p.la, lon: p.lo, zoom: p.z, country: p.c || null };
+    const at = p.an != null ? G.places[p.an] : p;
+    return { name: p.n, kind: p.k, lat: at.la, lon: at.lo, zoom: p.z, country: p.c || null, ...(at !== p && { anchor: at.n }) };
   };
   const places = [toPlace(best)];
   for (const [i, sc] of ranked) {

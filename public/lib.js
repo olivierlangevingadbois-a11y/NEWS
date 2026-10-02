@@ -63,6 +63,8 @@ export function safeUrl(u) {
 }
 export const fold = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 export const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+// « Japon (Tokyo) » : lieu identifié, et ville où le point est posé quand ce n'est pas la même.
+export const placeLabel = (place) => (place.anchor && place.anchor !== place.name ? `${place.name} (${place.anchor})` : place.name);
 
 export function timeAgo(iso, now = Date.now()) {
   const min = Math.round((now - Date.parse(iso)) / 60000);

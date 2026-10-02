@@ -319,3 +319,25 @@ a.btn { text-decoration: none; display: inline-block; }
 .globe-link { text-decoration: none; background: var(--accent-soft); color: var(--accent); }
 .globe-link svg { width: 13px; height: 13px; }
 .globe-link:hover { text-decoration: underline; }
+
+/* Bouton satellite du globe */
+.maplibregl-ctrl-group.globe-sat button { width: auto; height: 29px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; font: 600 .75rem/1 var(--sans); color: #333; }
+.maplibregl-ctrl-group.globe-sat button svg { width: 15px; height: 15px; }
+.maplibregl-ctrl.maplibregl-ctrl-group.globe-sat button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.maplibregl-ctrl-group.globe-sat button:disabled { opacity: .6; cursor: progress; }
+:root[data-theme="dark"] .globe-sat button:not([aria-pressed="true"]) { color: var(--text-2); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .globe-sat button:not([aria-pressed="true"]) { color: var(--text-2); }
+}
+
+/* Mini-carte de la page d'une histoire */
+.minimap { position: relative; height: 230px; padding: 0; overflow: hidden; background: var(--surface-2); }
+.minimap .minimap-map { position: absolute; inset: 0; }
+.minimap-label { position: absolute; left: 10px; bottom: 10px; z-index: 2; display: flex; flex-direction: column; gap: 2px; max-width: calc(100% - 20px); padding: 8px 12px; border-radius: 8px; background: var(--surface); color: var(--text); text-decoration: none; box-shadow: 0 2px 10px rgb(0 0 0 / .15); }
+.minimap-label b { font: 600 .95rem/1.2 var(--serif); }
+.minimap-label span { font-size: .75rem; color: var(--accent); }
+.minimap-label:hover span { text-decoration: underline; }
+.minimap .maplibregl-canvas { cursor: pointer; }
+.minimap.no-map .minimap-label { position: static; margin: 0; box-shadow: none; background: transparent; }
+.minimap.no-map { height: auto; padding: 14px 16px; }
+@media (max-width: 700px) { .minimap { height: 190px; } }

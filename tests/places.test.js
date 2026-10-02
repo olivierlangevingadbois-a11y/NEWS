@@ -41,3 +41,36 @@ test('le lieu le plus précis l’emporte sur son pays', () => {
 test('une histoire sans lieu reste hors du globe', () => {
   assert.equal(where('Nvidia dévoile sa nouvelle puce pour l’intelligence artificielle'), null);
 });
+
+test('une ville citée l’emporte sur son pays, même rarement citée', () => {
+  const place = locateStory([
+    articleMentions({ title: 'Le Japon frappé par un fort séisme', description: 'Les dégâts sont importants à Sendai.', lang: 'fr' }),
+    articleMentions({ title: 'Strong earthquake shakes Japan', description: 'Tsunami warning issued for the coast.', lang: 'en' }),
+    articleMentions({ title: 'Japon : alerte au tsunami levée', description: 'Les autorités font le bilan.', lang: 'fr' }),
+  ]).place;
+  assert.equal(place.name, 'Sendai');
+  assert.equal(place.anchor, undefined);
+});
+
+test('sans ville citée : capitale du pays ou de la province, ville principale de la région', () => {
+  const japan = where('Le Japon frappé par un fort séisme');
+  assert.equal(japan.name, 'Japon');
+  assert.equal(japan.anchor, 'Tokyo');
+  assert.ok(Math.abs(japan.lat - 35.69) < 0.1 && Math.abs(japan.lon - 139.69) < 0.1);
+  assert.equal(where('Le Canada impose de nouveaux tarifs').anchor, 'Ottawa');
+  const quebec = where('Le gouvernement du Québec annonce des compressions');
+  assert.equal(quebec.kind, 'admin');
+  assert.equal(quebec.anchor, 'Québec');
+  assert.equal(where('Feux de forêt en Gaspésie').anchor, 'Gaspé');
+});
+
+test('on descend du plus vaste au plus précis : région, pays, ville', () => {
+  const iran = where('Tensions au Moyen-Orient', "L'Iran menace de fermer le détroit.");
+  assert.equal(iran.name, 'Iran');
+  assert.equal(iran.anchor, 'Téhéran');
+  assert.equal(where('Feux de forêt au Québec', 'Des évacuations à Sept-Îles, sur la Côte-Nord.').name, 'Sept-Îles');
+  // Une mer reste à sa place.
+  const sea = where('Collision en mer de Chine méridionale');
+  assert.equal(sea.anchor, undefined);
+  assert.equal(sea.lat, 12);
+});
