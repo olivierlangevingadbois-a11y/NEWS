@@ -111,7 +111,7 @@ src/build.js             Orchestration : récupère → fusionne l'historique �
 src/pipeline/fetch.js    Lecture RSS / Atom / RDF, concurrence bornée, rapport de santé des flux
 src/pipeline/text.js     Normalisation bilingue FR/EN (lexique commun, noms propres, racinisation)
 src/pipeline/cluster.js  TF-IDF + regroupement agglomératif à liaison moyenne (histoires FR + EN réunies)
-src/pipeline/geo.js      Attribution des régions (lieux, institutions, personnalités)
+src/pipeline/geo.js      Sections régionales (lieux du répertoire, institutions, personnalités)
 src/pipeline/topics.js   Thèmes : sciences (espace, santé), IA, environnement (catastrophes naturelles)
 src/pipeline/places.js   Lieu de chaque histoire pour le globe (répertoire config/gazetteer.json)
 scripts/build-gazetteer.js  Génère le répertoire de lieux et le fond de carte (npm run gazetteer)
@@ -125,6 +125,7 @@ public/                  Site statique sans cadriciel (HTML, CSS, modules JS)
 ```
 
 - **Regroupement.** Les titres et descriptions sont convertis en vecteurs TF-IDF. Un lexique bilingue rapproche « droits de douane » et « tariffs », « Chine » et « China ». Deux groupes ne fusionnent que si leur similarité *moyenne* est suffisante, ce qui empêche un sujet large d'absorber des histoires distinctes.
+- **Régions.** Une histoire va dans la section de chaque lieu qu'elle cite (le même répertoire que le globe), ainsi que des personnalités et institutions connues (Trump, CAQ, OTAN). La section du lieu affiché sur le globe en fait toujours partie. La rubrique du flux ou le pays du média ne servent que si aucun article de l'histoire ne cite de lieu. L'Amérique latine n'a pas de section : ces histoires restent dans « À la une » et les thèmes.
 - **Fenêtre.** Les 72 dernières heures. L'historique est conservé entre deux exécutions dans le cache de GitHub Actions.
 - **Classement.** Nombre de sources, fraîcheur (demi-vie de 16 h) et un léger avantage pour le Québec et le Canada.
 

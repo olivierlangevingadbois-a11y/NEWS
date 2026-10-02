@@ -86,8 +86,8 @@ function contains(outer, inner) {
   return km(outer, at) <= 20000 / 2 ** outer.z;
 }
 
-// Choisit le lieu d'une histoire à partir des mentions de tous ses articles.
-export function locateStory(articleMentionList) {
+// Résout les mentions (contexte, langue, faux amis) et note chaque lieu cité.
+function scorePlaces(articleMentionList) {
   // 1. Contexte : pays et provinces cités sans ambiguïté, et gentilés.
   const context = new Set();
   for (const am of articleMentionList) {
@@ -146,6 +146,23 @@ export function locateStory(articleMentionList) {
       }
     }
   }
+  return scores;
+}
+
+// Lieux cités par un article, avec leur poids (titre plus que description, ville
+// plus que pays). Sert aussi à classer l'article par région, comme sur le globe.
+export function articlePlaces(mentions) {
+  return [...scorePlaces([mentions])].map(([i, weight]) => {
+    const p = G.places[i];
+    // Une région sans pays (Sahel, Balkans) prend celui de sa ville principale.
+    const at = p.c || p.an == null ? p : G.places[p.an];
+    return { country: at.c || null, admin: at.a || null, weight };
+  });
+}
+
+// Choisit le lieu d'une histoire à partir des mentions de tous ses articles.
+export function locateStory(articleMentionList) {
+  const scores = scorePlaces(articleMentionList);
   if (!scores.size) return { place: null, places: [] };
 
   // 3. Un lieu précis hérite d'une part du score de son pays ou de sa province.
@@ -180,7 +197,7 @@ export function locateStory(articleMentionList) {
   const toPlace = (i) => {
     const p = G.places[i];
     const at = p.an != null ? G.places[p.an] : p;
-    return { name: p.n, kind: p.k, lat: at.la, lon: at.lo, zoom: p.z, country: p.c || null, ...(at !== p && { anchor: at.n }) };
+    return { name: p.n, kind: p.k, lat: at.la, lon: at.lo, zoom: p.z, country: p.c || null, ...(p.a && { admin: p.a }), ...(at !== p && { anchor: at.n }) };
   };
   const places = [toPlace(best)];
   for (const [i, sc] of ranked) {

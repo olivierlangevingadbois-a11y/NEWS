@@ -21,18 +21,47 @@ test("médias d'État hors de l'axe gauche-droite", () => {
 });
 
 test('géo-étiquetage : le Canada dans le monde', () => {
-  const scores = tagArticle({ title: "Trump impose des droits de douane sur l'acier canadien", description: 'Ottawa promet de riposter.' }, { country: 'QC' });
-  assert.ok(scores.canada > 0 && scores.us > 0);
-  assert.deepEqual(clusterRegions([scores, { canada: 2 }]).primary, 'canada');
+  const tag = tagArticle({ title: "Trump impose des droits de douane sur l'acier canadien", description: 'Ottawa promet de riposter.' }, { country: 'QC' });
+  assert.ok(tag.scores.canada > 0 && tag.scores.us > 0);
+  assert.equal(clusterRegions([tag, { scores: { canada: 2 }, weak: false }]).primary, 'canada');
 });
 
 test('un média local sans lieu nommé parle de chez lui', () => {
-  assert.deepEqual(tagArticle({ title: "Le prix de l'essence grimpe", description: '' }, { country: 'QC' }), { quebec: 1 });
+  assert.deepEqual(tagArticle({ title: "Le prix de l'essence grimpe", description: '' }, { country: 'QC' }), { scores: { quebec: 1 }, weak: true });
 });
 
 test("« Jordan Bardella » n'est pas la Jordanie", () => {
-  const s = tagArticle({ title: 'Jordan Bardella en tête des sondages', description: 'Le RN domine en France', feedRegion: 'world' }, { country: 'FR' });
-  assert.deepEqual(Object.keys(s), ['europe']);
+  const { scores } = tagArticle({ title: 'Jordan Bardella en tête des sondages', description: 'Le RN domine en France', feedRegion: 'world' }, { country: 'FR' });
+  assert.deepEqual(Object.keys(scores), ['europe']);
+});
+
+// Cas signalés : la rubrique du flux ou un mot secondaire décidait de la section.
+const regionsOf = (articles) => clusterRegions(articles.map(([a, src]) => tagArticle(a, src))).regions;
+const abc = { country: 'AU' };
+
+test('la rubrique du flux ne l’emporte pas sur un lieu cité', () => {
+  assert.deepEqual(regionsOf([
+    [{ title: 'Manchester City to appeal after being found guilty', description: 'The Premier League club says it is innocent.', feedRegion: 'oceania' }, abc],
+    [{ title: '« Le club est innocent » : Manchester City fait appel', description: '', feedRegion: 'world' }, { country: 'FR' }],
+  ]), ['europe']);
+  assert.deepEqual(regionsOf([
+    [{ title: 'Le Brésil mise sur le solaire et l’éolien', description: 'Brasilia veut doubler sa production d’énergie renouvelable.', feedRegion: 'africa' }, { country: 'ZA' }],
+  ]), []);
+});
+
+test('un mot secondaire ne déplace pas une histoire', () => {
+  assert.deepEqual(regionsOf([
+    [{ title: 'Incendie au lycée Nelson-Mandela de Nantes', description: 'L’établissement porte le nom du héros de la lutte anti-apartheid sud-africaine.', feedRegion: 'world' }, { country: 'FR' }],
+    [{ title: 'Nantes : un lycée ravagé par les flammes', description: 'Les élèves seront accueillis ailleurs.', feedRegion: 'world' }, { country: 'FR' }],
+  ]), ['europe']);
+});
+
+test('les indices faibles ne comptent que si personne ne cite de lieu', () => {
+  assert.deepEqual(regionsOf([
+    [{ title: 'OpenAI dévoile un nouveau modèle', description: '', feedRegion: 'oceania' }, abc],
+    [{ title: 'OpenAI unveils new model at San Francisco event', description: '', feedRegion: 'world' }, { country: 'US' }],
+  ]), ['us']);
+  assert.deepEqual(regionsOf([[{ title: 'OpenAI dévoile un nouveau modèle', description: '', feedRegion: 'oceania' }, abc]]), ['oceania']);
 });
 
 test('ton des titres', () => {

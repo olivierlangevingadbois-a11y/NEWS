@@ -1,4 +1,5 @@
 import { compileKeywords, countKeywords } from './text.js';
+import { articleMentions, articlePlaces } from './places.js';
 
 export const REGIONS = ['quebec', 'canada', 'us', 'europe', 'asia', 'africa', 'oceania'];
 
@@ -9,6 +10,27 @@ export const HOME_REGION = {
   ZA: 'africa', NG: 'africa', KE: 'africa',
   AU: 'oceania', NZ: 'oceania', NC: 'oceania',
 };
+
+// Région de chaque pays (codes ISO). Amérique latine, Caraïbes et Antarctique
+// n'ont pas de section : leurs histoires restent dans « À la une » et les thèmes.
+const COUNTRIES = {
+  europe: `AD AL AM AT AX AZ BA BE BG BY CH CY CZ DE DK EE ES FI FO FR GB GE GG GI GL GR HR HU IE IM IS IT JE LI LT LU LV MC MD ME MK MT NL NO PL PT RO RS RU SE SI SJ SK SM TR UA VA XK`,
+  asia: `AE AF BD BH BN BT CN HK ID IL IN IQ IR JO JP KG KH KP KR KW KZ LA LB LK MM MN MO MV MY NP OM PH PK PS QA SA SG SY TH TJ TL TM TW UZ VN YE`,
+  africa: `AO BF BI BJ BW CD CF CG CI CM CV DJ DZ EG EH ER ET GA GH GM GN GQ GW KE KM LR LS LY MA MG ML MR MU MW MZ NA NE NG RE RW SC SD SH SL SN SO SS ST SZ TD TG TN TZ UG YT ZA ZM ZW`,
+  oceania: `AS AU CC CK CX FJ FM GU KI MH MP NC NF NR NU NZ PF PG PN PW SB TK TO TV VU WF WS`,
+};
+const COUNTRY_REGION = { CA: 'canada', US: 'us' };
+for (const [region, codes] of Object.entries(COUNTRIES)) for (const cc of codes.split(' ')) COUNTRY_REGION[cc] = region;
+
+// Section d'un lieu : le Québec (province CA.10) a la sienne, à part du reste du Canada.
+export function regionOf(country, admin) {
+  if (admin === 'CA.10') return 'quebec';
+  return COUNTRY_REGION[country] || null;
+}
+
+// Lieu hors de toute section (Brésil, Mexique) : il compte quand même, pour ne pas
+// laisser un mot-clé secondaire décider seul de la section.
+const ELSEWHERE = 'elsewhere';
 
 // Mots-clés géographiques (écrits naturellement, normalisés au chargement).
 const KEYWORDS = {
@@ -56,29 +78,36 @@ const CASE_SENSITIVE = new Set(['us', 'eu', 'ue', 'uk', 'stm', 'caq', 'plq', 'rd
 const PATTERNS = Object.fromEntries(REGIONS.map((region) => [region, compileKeywords(KEYWORDS[region])]));
 const countMatches = (text, region) => countKeywords(text, PATTERNS[region], CASE_SENSITIVE);
 
+// Indices de région d'un article. scores : lieux et mots-clés cités. weak : vrai
+// quand rien n'est cité et que la région vient seulement du flux ou du pays du média.
 export function tagArticle(article, source) {
   const scores = {};
-  for (const region of REGIONS) {
-    const s = 2 * countMatches(article.title, region) + countMatches(article.description, region);
-    if (s > 0) scores[region] = s;
+  const add = (region, w) => { if (w > 0) scores[region] = (scores[region] || 0) + w; };
+  for (const region of REGIONS) add(region, 2 * countMatches(article.title, region) + countMatches(article.description, region));
+  // Tous les lieux du répertoire du globe, pas seulement ceux des listes de mots-clés.
+  for (const p of articlePlaces(article.mentions || articleMentions(article))) {
+    if (p.country) add(regionOf(p.country, p.admin) || ELSEWHERE, 2 * p.weight);
   }
-  const hint = article.feedRegion && article.feedRegion !== 'world' ? article.feedRegion : null;
-  if (hint) scores[hint] = (scores[hint] || 0) + 1.5;
+  if (Object.keys(scores).length) return { scores, weak: false };
+  // Rien de cité : la rubrique du flux, sinon le pays d'un média local.
+  if (article.feedRegion && article.feedRegion !== 'world') return { scores: { [article.feedRegion]: 1 }, weak: true };
   const home = HOME_REGION[source.country];
-  // Un média local qui ne nomme aucun lieu parle presque toujours de chez lui.
-  if (!Object.keys(scores).length && article.feedRegion !== 'world' && home) scores[home] = 1;
-  return scores;
+  if (home && article.feedRegion !== 'world') return { scores: { [home]: 1 }, weak: true };
+  return { scores, weak: true };
 }
 
-export function clusterRegions(articleScores) {
+// Régions d'une histoire. Les indices faibles (flux, pays du média) ne comptent
+// que si aucun article de l'histoire ne cite de lieu.
+export function clusterRegions(articleTags) {
+  const strong = articleTags.filter((t) => !t.weak);
   const total = {};
-  for (const scores of articleScores) {
+  for (const { scores } of strong.length ? strong : articleTags) {
     const sum = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
     for (const [region, s] of Object.entries(scores)) total[region] = (total[region] || 0) + s / sum;
   }
   const ranked = Object.entries(total).sort((a, b) => b[1] - a[1]);
   if (!ranked.length) return { primary: null, regions: [] };
   const top = ranked[0][1];
-  const regions = ranked.filter(([, v]) => v >= Math.max(0.3, top * 0.35)).map(([r]) => r);
-  return { primary: ranked[0][0], regions, weights: Object.fromEntries(ranked.map(([r, v]) => [r, +v.toFixed(2)])) };
+  const regions = ranked.filter(([r, v]) => r !== ELSEWHERE && v >= Math.max(0.3, top * 0.35)).map(([r]) => r);
+  return { primary: regions[0] || null, regions, weights: Object.fromEntries(ranked.map(([r, v]) => [r, +v.toFixed(2)])) };
 }
