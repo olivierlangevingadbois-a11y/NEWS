@@ -36,7 +36,7 @@ jobs:
       # Les flux RSS ne gardent que leurs derniers articles : on conserve
       # l'historique des 72 dernières heures d'une exécution à l'autre.
       - name: Restaurer l'état précédent
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: state
           key: prisme-state-${{ github.run_id }}
@@ -51,14 +51,14 @@ jobs:
           PRISME_AI_MIN_SOURCES: ${{ vars.PRISME_AI_MIN_SOURCES }}
 
       - name: Sauvegarder l'état
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: state
           key: prisme-state-${{ github.run_id }}
 
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
 
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
@@ -70,4 +70,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
