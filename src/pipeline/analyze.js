@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { clusterRegions } from './geo.js';
+import { clusterRegions, regionOf } from './geo.js';
 import { clusterTopics } from './topics.js';
 import { locateStory } from './places.js';
 
@@ -58,9 +58,13 @@ export function buildStory(cluster, articles, sourcesById, regionScores, now) {
   }
   for (const it of unique) langs[it.a.lang] = (langs[it.a.lang] || 0) + 1;
 
-  const { primary, regions, weights } = clusterRegions(items.map((it) => it.geo));
-  const { topics, subtopics } = clusterTopics(items.map((it) => it.a.topics));
   const { place, places } = locateStory(items.map((it) => it.a.mentions));
+  let { primary, regions, weights } = clusterRegions(items.map((it) => it.geo));
+  // La section suit le globe : la région du lieu de l'histoire en fait toujours partie.
+  const placeRegion = place && regionOf(place.country, place.admin);
+  if (placeRegion && !regions.includes(placeRegion)) regions = [...regions, placeRegion];
+  primary ??= placeRegion || null;
+  const { topics, subtopics } = clusterTopics(items.map((it) => it.a.topics));
 
   // Deux solitudes : couverture canadienne entièrement dans une seule langue.
   const canadian = unique.filter((it) => ['QC', 'CA'].includes(sourcesById[it.a.sourceId].country));
