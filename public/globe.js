@@ -1,84 +1,20 @@
 // Vue Globe : chaque histoire est un point; la choisir nous y amène par un
 // zoom arrière, un survol et un zoom avant. Chargée à la demande (MapLibre ≈ 1 Mo).
-import * as maplibregl from './vendor/maplibre/maplibre-gl.mjs';
 import {
-  REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, SUBTOPIC_LABEL, COUNTRY, HUB, BIAS_BY_KEY, esc, timeAgo, plural, biasBar, biasSummary,
+  maplibregl, ensureCss, isDark, palette, buildStyle, addDetails, detailsAvailable, satellite, coverageByCountry, arcsData, addArcLayers,
+} from './mapkit.js';
+import {
+  REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, SUBTOPIC_LABEL, COUNTRY, BIAS_BY_KEY, esc, timeAgo, plural, biasBar, biasSummary, placeLabel, store,
 } from './lib.js';
 import { visibleStories } from './views.js';
 
-const TILES = 'https://tiles.openfreemap.org';
 const DWELL_MS = 8000;
 const INITIAL = { center: [-40, 38], zoom: 1.4 };
 
 let G = null; // état du globe monté
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
-const isDark = () => {
-  const t = document.documentElement.dataset.theme;
-  return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-};
-const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const narrow = () => matchMedia('(max-width: 700px)').matches;
-
-function palette() {
-  return isDark()
-    ? { ocean: '#0e181b', land: '#2b2b26', border: '#4d4b43', road: '#3e3d37', label: '#c3c2b7', halo: '#0e181b', sky: '#121211', horizon: '#1c2a2f', dot: cssVar('--accent') || '#3fb8ac', ring: '#f4f3ef',
-      bias: { left: '#8f84ee', cleft: '#7a72c9', center: '#9a988f', cright: '#b08a3e', right: '#c98500', state: '#a3a198' } }
-    : { ocean: '#cddde3', land: '#ebe8df', border: '#a9a499', road: '#d8d2c4', label: '#54524d', halo: '#ebe8df', sky: '#f7f6f3', horizon: '#e3ecef', dot: cssVar('--accent') || '#0e7c74', ring: '#151513',
-      bias: { left: '#5b4bc4', cleft: '#8a7fdc', center: '#7d7a72', cright: '#c9952e', right: '#b87800', state: '#57554f' } };
-}
-
-// Style maison : le fond Natural Earth est intégré au site et s'affiche toujours.
-function buildStyle() {
-  const c = palette();
-  return {
-    version: 8,
-    projection: { type: 'globe' },
-    sky: { 'sky-color': c.sky, 'horizon-color': c.horizon, 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] },
-    glyphs: `${TILES}/fonts/{fontstack}/{range}.pbf`,
-    sources: { world: { type: 'geojson', data: 'geo/world.json', attribution: 'Natural Earth · GeoNames' } },
-    layers: [
-      { id: 'ocean', type: 'background', paint: { 'background-color': c.ocean } },
-      { id: 'land', type: 'fill', source: 'world', filter: ['==', ['get', 'kind'], 'land'], paint: { 'fill-color': c.land } },
-      { id: 'borders', type: 'line', source: 'world', filter: ['==', ['get', 'kind'], 'border'], maxzoom: 5, paint: { 'line-color': c.border, 'line-width': 0.7 } },
-    ],
-  };
-}
-
-// Détails OpenFreeMap (côtes précises, routes, noms de lieux) : ajoutés seulement
-// si le service répond, pour qu'une panne ne bloque jamais le globe.
-function detailLayers() {
-  const c = palette();
-  const name = ['coalesce', ['get', 'name:fr'], ['get', 'name']];
-  return [
-    { id: 'water-detail', type: 'fill', source: 'omt', 'source-layer': 'water', minzoom: 3, paint: { 'fill-color': c.ocean, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0, 4, 1] } },
-    { id: 'borders-detail', type: 'line', source: 'omt', 'source-layer': 'boundary', minzoom: 4.5, filter: ['all', ['==', ['get', 'admin_level'], 2], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': c.border, 'line-width': 1 } },
-    { id: 'states-detail', type: 'line', source: 'omt', 'source-layer': 'boundary', minzoom: 4, filter: ['all', ['==', ['get', 'admin_level'], 4], ['!=', ['get', 'maritime'], 1]], paint: { 'line-color': c.border, 'line-width': 0.6, 'line-dasharray': [2, 2] } },
-    { id: 'roads', type: 'line', source: 'omt', 'source-layer': 'transportation', minzoom: 6, filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary']]], paint: { 'line-color': c.road, 'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.5, 10, 2] } },
-    { id: 'country-labels', type: 'symbol', source: 'omt', 'source-layer': 'place', maxzoom: 6, filter: ['==', ['get', 'class'], 'country'], layout: { 'text-field': name, 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-transform': 'uppercase', 'text-letter-spacing': 0.08 }, paint: { 'text-color': c.label, 'text-halo-color': c.halo, 'text-halo-width': 1.2 } },
-    { id: 'city-labels', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 5, filter: ['in', ['get', 'class'], ['literal', ['city', 'town']]], layout: { 'text-field': name, 'text-font': ['Noto Sans Regular'], 'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 10, 14] }, paint: { 'text-color': c.label, 'text-halo-color': c.halo, 'text-halo-width': 1.2 } },
-  ];
-}
-
-async function addDetails() {
-  if (G.details === false) return;
-  if (G.details == null) {
-    try {
-      const res = await fetch(`${TILES}/planet`, { signal: AbortSignal.timeout(6000) });
-      G.details = res.ok ? await res.json() : false;
-    } catch {
-      G.details = false;
-    }
-  }
-  const { map } = G || {};
-  if (!map || !G.details || map.getSource('omt')) return;
-  map.addSource('omt', {
-    type: 'vector', tiles: G.details.tiles, minzoom: G.details.minzoom ?? 0, maxzoom: G.details.maxzoom ?? 14,
-    attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
-  });
-  const before = map.getLayer('stories-halo') ? 'stories-halo' : undefined;
-  for (const layer of detailLayers()) map.addLayer(layer, layer.id === 'water-detail' || layer.id.endsWith('detail') ? 'borders' : before);
-}
 
 // Plusieurs histoires au même endroit : on les dispose en spirale pour qu'elles restent cliquables.
 function storyFeatures(stories) {
@@ -95,83 +31,12 @@ function storyFeatures(stories) {
   });
 }
 
-// ---------- Arcs de couverture : d'où viennent les médias qui couvrent l'histoire ----------
-
-const toVec = ([lon, lat]) => {
-  const l = (lon * Math.PI) / 180, p = (lat * Math.PI) / 180;
-  return [Math.cos(p) * Math.cos(l), Math.cos(p) * Math.sin(l), Math.sin(p)];
-};
-const toLonLat = ([x, y, z]) => [(Math.atan2(y, x) * 180) / Math.PI, (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI];
-
-// Arc de grand cercle, longitudes « déroulées » pour franchir l'antiméridien sans saut.
-function greatCircle(from, to, steps = 48) {
-  const a = toVec(from), b = toVec(to);
-  const omega = Math.acos(Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])));
-  if (omega < 0.01) return null;
-  const pts = [];
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const k1 = Math.sin((1 - t) * omega) / Math.sin(omega), k2 = Math.sin(t * omega) / Math.sin(omega);
-    const p = toLonLat([k1 * a[0] + k2 * b[0], k1 * a[1] + k2 * b[1], k1 * a[2] + k2 * b[2]]);
-    if (pts.length) while (p[0] - pts[pts.length - 1][0] > 180) p[0] -= 360;
-    if (pts.length) while (p[0] - pts[pts.length - 1][0] < -180) p[0] += 360;
-    pts.push(p);
-  }
-  return pts;
-}
-
-function bucketForMean(mean) {
-  if (mean == null) return 'state';
-  if (mean <= -1.5) return 'left';
-  if (mean <= -0.5) return 'cleft';
-  if (mean < 0.5) return 'center';
-  if (mean < 1.5) return 'cright';
-  return 'right';
-}
-
-// Médias regroupés par pays d'origine, avec l'orientation moyenne de ces médias.
-function coverageByCountry(s) {
-  const groups = new Map();
-  for (const a of s.articles) {
-    const src = G.ctx.sourcesById[a.source];
-    if (!src) continue;
-    const g = groups.get(src.country) || { cc: src.country, n: 0, sum: 0, rated: 0 };
-    g.n++;
-    if (src.bias != null) { g.sum += src.bias; g.rated++; }
-    groups.set(src.country, g);
-  }
-  return [...groups.values()].map((g) => ({ ...g, bucket: bucketForMean(g.rated ? g.sum / g.rated : null) })).sort((a, b) => b.n - a.n);
-}
-
-function arcsData(s) {
-  const features = [];
-  if (!s) return { type: 'FeatureCollection', features };
-  const c = palette();
-  const dest = [s.place.lon, s.place.lat];
-  for (const g of coverageByCountry(s)) {
-    const hub = HUB[g.cc];
-    if (!hub) continue;
-    const color = c.bias[g.bucket];
-    features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: hub }, properties: { kind: 'hub', n: g.n, color } });
-    const line = greatCircle(hub, dest);
-    if (line) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: line }, properties: { kind: 'arc', n: g.n, color } });
-  }
-  return { type: 'FeatureCollection', features };
-}
+const arcs = (s) => arcsData(s, G.ctx.sourcesById, { sat: G.sat });
 
 function addStoryLayers() {
   const { map } = G;
-  const c = palette();
-  map.addSource('arcs', { type: 'geojson', data: arcsData(G.selected) });
-  map.addLayer({
-    id: 'arcs', type: 'line', source: 'arcs', filter: ['==', ['get', 'kind'], 'arc'],
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': ['get', 'color'], 'line-width': ['+', 1, ['*', 0.9, ['get', 'n']]], 'line-opacity': 0.8 },
-  });
-  map.addLayer({
-    id: 'hubs', type: 'circle', source: 'arcs', filter: ['==', ['get', 'kind'], 'hub'],
-    paint: { 'circle-radius': ['+', 3, ['get', 'n']], 'circle-color': ['get', 'color'], 'circle-stroke-color': c.land, 'circle-stroke-width': 1.5 },
-  });
+  const c = palette({ sat: G.sat });
+  addArcLayers(map, arcs(G.selected), { sat: G.sat });
   map.addSource('stories', { type: 'geojson', data: { type: 'FeatureCollection', features: storyFeatures(G.list) }, promoteId: 'id' });
   const size = ['sqrt', ['get', 'n']];
   map.addLayer({
@@ -203,12 +68,12 @@ function themeOf(s) {
 function storyCard(s) {
   const i = G.list.indexOf(s);
   return `<article class="gcard">
-    <div class="kicker"><span class="region">${pin}${esc(s.place.name)}</span>${themeOf(s) ? `<span class="topic">${esc(themeOf(s))}</span>` : ''}<span>${esc(timeAgo(s.updated))}</span></div>
+    <div class="kicker"><span class="region">${pin}${esc(placeLabel(s.place))}</span>${themeOf(s) ? `<span class="topic">${esc(themeOf(s))}</span>` : ''}<span>${esc(timeAgo(s.updated))}</span></div>
     <h2><a href="#/histoire/${esc(s.id)}">${esc(s.title)}</a></h2>
     ${biasBar(s.bias)}
     <div class="meta"><strong>${plural(s.sourceCount, 'source', 'sources')}</strong><span>${esc(biasSummary(s.bias))}</span></div>
     ${s.lead ? `<p class="lead">${esc(s.lead)}</p>` : ''}
-    <div class="gfrom"><h3>D'où vient la couverture</h3><div class="chips">${coverageByCountry(s).map((g) => `<span class="chip" title="${esc(BIAS_BY_KEY[g.bucket].label)} en moyenne"><span class="swatch" style="--c:${palette().bias[g.bucket]}"></span>${esc(COUNTRY[g.cc] || g.cc)} <b>${g.n}</b></span>`).join('')}</div></div>
+    <div class="gfrom"><h3>D'où vient la couverture</h3><div class="chips">${coverageByCountry(s, G.ctx.sourcesById).map((g) => `<span class="chip" title="${esc(BIAS_BY_KEY[g.bucket].label)} en moyenne"><span class="swatch" style="--c:${palette({ sat: G.sat }).bias[g.bucket]}"></span>${esc(COUNTRY[g.cc] || g.cc)} <b>${g.n}</b></span>`).join('')}</div></div>
     <div class="gcard-foot"><a class="btn" href="#/histoire/${esc(s.id)}">Comparer la couverture →</a><span class="gpos">${i + 1} / ${G.list.length}</span></div>
   </article>`;
 }
@@ -218,14 +83,14 @@ function intro() {
   return `<div class="gintro">
     <h2>Le monde des nouvelles</h2>
     <p>Chaque point est une histoire, plus gros quand plus de médias la couvrent. Choisissez-en un, ou lancez la visite guidée : le globe vous amènera d'une nouvelle à l'autre.</p>
-    ${top.length ? `<ul class="glist">${top.map((s) => `<li><button type="button" data-gpick="${esc(s.id)}"><span class="gplace">${esc(s.place.name)}</span>${esc(s.title)}</button></li>`).join('')}</ul>` : ''}
+    ${top.length ? `<ul class="glist">${top.map((s) => `<li><button type="button" data-gpick="${esc(s.id)}"><span class="gplace">${esc(placeLabel(s.place))}</span>${esc(s.title)}</button></li>`).join('')}</ul>` : ''}
   </div>`;
 }
 
 function pickList(ids) {
   const stories = ids.map((id) => G.list.find((s) => s.id === id)).filter(Boolean);
   return `<div class="gintro"><h2>${plural(stories.length, 'histoire', 'histoires')} ici</h2>
-    <ul class="glist">${stories.map((s) => `<li><button type="button" data-gpick="${esc(s.id)}"><span class="gplace">${esc(s.place.name)} · ${plural(s.sourceCount, 'source', 'sources')}</span>${esc(s.title)}</button></li>`).join('')}</ul></div>`;
+    <ul class="glist">${stories.map((s) => `<li><button type="button" data-gpick="${esc(s.id)}"><span class="gplace">${esc(placeLabel(s.place))} · ${plural(s.sourceCount, 'source', 'sources')}</span>${esc(s.title)}</button></li>`).join('')}</ul></div>`;
 }
 
 function renderPanel(html) {
@@ -243,7 +108,7 @@ function renderPanel(html) {
 function fly(s) {
   const pad = narrow() ? { top: 20, bottom: Math.round(G.root.clientHeight * 0.45), left: 20, right: 20 } : { top: 40, bottom: 40, left: 400, right: 40 };
   // Sans tuiles de détail, un zoom trop rapproché n'afficherait qu'un aplat : on reste plus haut.
-  const target = { center: [s.place.lon, s.place.lat], zoom: Math.min(s.place.zoom, G.details ? 9.5 : 5.5), padding: pad };
+  const target = { center: [s.place.lon, s.place.lat], zoom: Math.min(s.place.zoom, detailsAvailable() || G.sat?.maxzoom > 10 ? 9.5 : 5.5), padding: pad };
   if (reducedMotion()) G.map.jumpTo(target);
   else G.map.flyTo({ ...target, curve: 1.7, speed: 0.75, essential: true });
 }
@@ -252,7 +117,7 @@ function select(s, { flyTo = true } = {}) {
   G.selected = s;
   G.ctx.ui.globeStory = s?.id || null;
   if (G.map.getLayer('stories-halo')) G.map.setFilter('stories-halo', ['==', ['get', 'id'], s?.id || '']);
-  G.map.getSource('arcs')?.setData(arcsData(s));
+  G.map.getSource('arcs')?.setData(arcs(s));
   history.replaceState(null, '', s ? `#/globe/${s.id}` : '#/globe');
   renderPanel();
   if (s && flyTo) fly(s);
@@ -314,8 +179,50 @@ function refreshData() {
   computeList();
   if (G.selected) G.selected = G.list.find((s) => s.id === G.selected.id) || null;
   G.map.getSource('stories')?.setData({ type: 'FeatureCollection', features: storyFeatures(G.list) });
-  G.map.getSource('arcs')?.setData(arcsData(G.selected));
+  G.map.getSource('arcs')?.setData(arcs(G.selected));
   renderPanel();
+}
+
+// ---------- Imagerie satellite ----------
+
+const SAT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l8-4 8 4-8 4zM4 12l8 4 8-4M4 18l8 4 8-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+
+function satControl() {
+  return {
+    onAdd() {
+      const el = document.createElement('div');
+      el.className = 'maplibregl-ctrl maplibregl-ctrl-group globe-sat';
+      el.innerHTML = `<button type="button" aria-pressed="false" title="Imagerie satellite">${SAT_ICON}<span>Satellite</span></button>`;
+      el.firstChild.addEventListener('click', () => setSatellite(!G.sat));
+      return el;
+    },
+    onRemove() {},
+  };
+}
+
+function satButton(state) {
+  const btn = G?.root.querySelector('.globe-sat button');
+  if (!btn) return;
+  btn.setAttribute('aria-pressed', String(state === 'on'));
+  btn.disabled = state === 'loading';
+  btn.querySelector('span').textContent = state === 'off-error' ? 'Indisponible' : 'Satellite';
+  btn.title = state === 'off-error' ? "L'imagerie satellite ne répond pas pour le moment" : 'Imagerie satellite';
+}
+
+async function setSatellite(on) {
+  if (!G?.map) return;
+  const map = G.map;
+  let sat = null;
+  if (on) {
+    satButton('loading');
+    sat = await satellite();
+    if (G?.map !== map) return;
+    if (!sat) { satButton('off-error'); return; }
+  }
+  G.sat = sat;
+  store.set('globeSat', Boolean(sat));
+  satButton(sat ? 'on' : 'off');
+  map.setStyle(buildStyle({ sat }), { diff: false });
 }
 
 // ---------- Montage ----------
@@ -339,10 +246,7 @@ function onKey(e) {
 
 export function mountGlobe(root, ctx, storyId) {
   destroyGlobe();
-  if (!document.getElementById('maplibre-css')) {
-    const link = Object.assign(document.createElement('link'), { id: 'maplibre-css', rel: 'stylesheet', href: 'vendor/maplibre/maplibre-gl.css' });
-    document.head.append(link);
-  }
+  ensureCss();
   root.innerHTML = `<section class="globe-page">
     <div class="globe-map" id="globe-map" role="region" aria-label="Globe des nouvelles. Utilisez les flèches gauche et droite pour passer d'une histoire à l'autre."></div>
     <aside class="globe-panel">
@@ -357,7 +261,7 @@ export function mountGlobe(root, ctx, storyId) {
     </aside>
   </section>`;
 
-  G = { root, ctx, list: [], hidden: 0, selected: null, playing: false, timer: null, filter: ctx.ui.globeFilter || 'all', dark: isDark() };
+  G = { root, ctx, list: [], hidden: 0, selected: null, playing: false, timer: null, filter: ctx.ui.globeFilter || 'all', dark: isDark(), sat: null };
   computeList();
   root.querySelector('#globe-filter').innerHTML = filterOptions();
 
@@ -379,17 +283,18 @@ export function mountGlobe(root, ctx, storyId) {
   }
   G.map = map;
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right');
+  map.addControl(satControl(), 'top-right');
   map.on('error', (e) => console.warn('Globe :', e.error?.message || e));
 
   const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'globe-tip', maxWidth: '280px' });
   map.on('style.load', () => {
     if (!map.getSource('stories')) addStoryLayers();
-    addDetails();
+    addDetails(map, { before: 'stories-halo' });
   });
   map.on('mousemove', 'stories', (e) => {
     map.getCanvas().style.cursor = 'pointer';
     const s = G.list.find((x) => x.id === e.features[0].properties.id);
-    if (s) popup.setLngLat(e.features[0].geometry.coordinates).setHTML(`<b>${esc(s.title)}</b><span>${esc(s.place.name)} · ${plural(s.sourceCount, 'source', 'sources')}</span>`).addTo(map);
+    if (s) popup.setLngLat(e.features[0].geometry.coordinates).setHTML(`<b>${esc(s.title)}</b><span>${esc(placeLabel(s.place))} · ${plural(s.sourceCount, 'source', 'sources')}</span>`).addTo(map);
   });
   map.on('mouseleave', 'stories', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
   map.on('click', (e) => {
@@ -427,6 +332,7 @@ export function mountGlobe(root, ctx, storyId) {
   map.once('load', () => {
     if (initial) select(initial);
   });
+  if (store.get('globeSat', false)) setSatellite(true);
   renderPanel();
 }
 
@@ -436,7 +342,7 @@ export function updateGlobe(ctx, storyId) {
   G.ctx = ctx;
   if (isDark() !== G.dark) {
     G.dark = isDark();
-    G.map.setStyle(buildStyle(), { diff: false });
+    G.map.setStyle(buildStyle({ sat: G.sat }), { diff: false });
   }
   refreshData();
   if (storyId && storyId !== G.selected?.id) {

@@ -89,6 +89,22 @@ async function renderGlobe(storyId) {
   else globe.mountGlobe(main, ctx, storyId);
 }
 
+// Mini-carte des pages d'histoire : MapLibre n'est chargé que si la page en a une,
+// et jamais en mode économie de données.
+let minimap = null;
+async function renderMinimap(story) {
+  const slot = main.querySelector('[data-minimap]');
+  if (!slot) { minimap?.destroyMinimap(); return; }
+  if (navigator.connection?.saveData) { slot.classList.add('no-map'); return; }
+  try {
+    minimap ??= await import('./minimap.js');
+  } catch {
+    slot.classList.add('no-map');
+    return;
+  }
+  if (main.contains(slot)) minimap.mountMinimap(main, story, ctx);
+}
+
 function render({ keepScroll = false } = {}) {
   const { name, arg } = route();
   renderTabs();
@@ -98,6 +114,7 @@ function render({ keepScroll = false } = {}) {
     return;
   }
   if (globe?.globeMounted()) globe.destroyGlobe();
+  if (name !== 'histoire') minimap?.destroyMinimap();
   document.body.classList.remove('globe-mode');
   const views = {
     home: () => renderHome(ctx),
@@ -115,6 +132,7 @@ function render({ keepScroll = false } = {}) {
     ? `${ctx.stories.find((s) => s.id === arg)?.title || 'Histoire'} — Prisme`
     : "Prisme — l'actualité sous tous ses angles";
   if (keepScroll) window.scrollTo(0, y);
+  if (name === 'histoire') renderMinimap(ctx.stories.find((s) => s.id === arg));
 }
 
 window.addEventListener('hashchange', () => {

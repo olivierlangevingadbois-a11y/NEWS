@@ -31,14 +31,29 @@ L'onglet **Globe** situe chaque histoire sur un globe en 3D. En choisir une nous
 - **Visite guidée** : une nouvelle toutes les 8 secondes. Les touches ← → passent d'une histoire à l'autre, l'espace lance ou arrête la visite, Échap l'arrête.
 - **Arcs de couverture** : ils partent de la ville où sont établis les médias de chaque pays, avec une épaisseur selon le nombre de médias et une couleur selon leur orientation moyenne.
 - **Filtre** : par région ou par thème. Chaque histoire a son lien direct (`#/globe/<id>`) et un bouton « Voir sur le globe » dans sa page.
+- **Satellite** : le bouton « Satellite » (en haut à droite) remplace le fond de carte par de l'imagerie satellite. Le choix est mémorisé, et suivi par les mini-cartes.
+- **Mini-carte** : la page de chaque histoire montre où elle se passe et d'où viennent les médias qui la couvrent. Un clic ouvre le globe sur l'histoire.
 
-Comment le lieu est choisi : les noms de lieux cités dans les titres et descriptions sont cherchés dans un répertoire bilingue (`config/gazetteer.json`, 5 000 lieux tirés de GeoNames et Natural Earth). Le contexte lève les ambiguïtés : « à Québec » est la ville, « au Québec » la province, et London suit l'Ontario quand l'Ontario est cité. Le lieu le plus précis et le plus cité l'emporte. Une histoire sans lieu clair reste hors du globe : environ 75 % des histoires sont localisées. Le journal de chaque construction affiche ce pourcentage et un échantillon des lieux retenus.
+Comment le lieu est choisi : les noms de lieux cités dans les titres et descriptions sont cherchés dans un répertoire bilingue (`config/gazetteer.json`, 5 000 lieux tirés de GeoNames et Natural Earth). Le contexte lève les ambiguïtés : « à Québec » est la ville, « au Québec » la province, et London suit l'Ontario quand l'Ontario est cité. On part du lieu le plus cité, puis on descend vers le lieu cité le plus précis qu'il contient : pays, province ou État, région, ville. Une ville citée l'emporte donc toujours sur son pays.
+
+Quand aucune ville n'est citée, le point n'est pas posé au milieu du pays mais sur une ville réelle, indiquée entre parenthèses :
+
+| Lieu identifié | Point posé sur | Exemple |
+|---|---|---|
+| Pays | sa capitale | Japon (Tokyo) |
+| Province ou État | sa capitale | Floride (Tallahassee) |
+| Région | sa ville principale, choisie à la main (`anchor` dans `config/places-extra.json`) | Gaspésie (Gaspé), Darfour (El Fasher) |
+| Mer, détroit, très grande région | son centre | mer de Chine méridionale |
+
+Une histoire sans lieu clair reste hors du globe : environ 75 % des histoires sont localisées. Le journal de chaque construction affiche ce pourcentage et un échantillon des lieux retenus.
 
 Pour corriger un lieu, ajouter un nom ou écarter un faux ami, modifiez `config/places-extra.json`, puis lancez `npm run gazetteer`.
 
 Le fond de carte (terres et frontières) fait partie du site. Les détails (côtes précises, routes, noms de lieux) viennent d'OpenFreeMap quand le service répond. Sinon, le globe reste utilisable avec un zoom moins rapproché. MapLibre GL est servi par le site lui-même, sans CDN.
 
-Données : GeoNames (CC BY 4.0), Natural Earth (domaine public), OpenFreeMap et © les contributeurs d'OpenStreetMap (ODbL), MapLibre GL (BSD-3).
+L'imagerie satellite vient de [Sentinel-2 cloudless 2016](https://s2maps.eu) d'EOX (licence CC BY 4.0, données Copernicus Sentinel modifiées), ou à défaut de NASA Blue Marble (domaine public). Les millésimes plus récents de Sentinel-2 cloudless sont réservés à un usage non commercial, d'où le choix de 2016. Si aucun des deux services ne répond, le bouton affiche « Indisponible » et le fond habituel reste en place.
+
+Données : GeoNames (CC BY 4.0), Natural Earth (domaine public), OpenFreeMap et © les contributeurs d'OpenStreetMap (ODbL), Sentinel-2 cloudless par EOX (CC BY 4.0), NASA Blue Marble, MapLibre GL (BSD-3).
 
 ## Mettre le site en ligne (5 minutes)
 
@@ -101,6 +116,8 @@ src/pipeline/topics.js   Thèmes : sciences (espace, santé), IA, environnement 
 src/pipeline/places.js   Lieu de chaque histoire pour le globe (répertoire config/gazetteer.json)
 scripts/build-gazetteer.js  Génère le répertoire de lieux et le fond de carte (npm run gazetteer)
 public/globe.js          Vue Globe (MapLibre GL, chargée à la demande)
+public/minimap.js        Mini-carte de la page d'une histoire
+public/mapkit.js         Fond de carte, satellite et arcs, communs au globe et aux mini-cartes
 src/pipeline/tone.js     Ton de chaque titre (mots chargés, majuscules, points d'exclamation)
 src/pipeline/analyze.js  Couverture par orientation, angles morts, deux solitudes, provenance, propriété
 src/pipeline/summarize.js Résumés multiperspectives optionnels (API Claude), avec cache

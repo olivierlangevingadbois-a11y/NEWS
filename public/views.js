@@ -1,6 +1,6 @@
 import {
   REGION_LABEL, REGION_ORDER, TOPIC_LABEL, TOPIC_ORDER, SUBTOPIC_LABEL, TOPIC_SUBTOPICS, BIAS, BIAS_BY_KEY, COUNTRY, OWNERSHIP, FACT, FACT_SCORE, PAYWALL,
-  bucketOf, sideOf, esc, safeUrl, fold, plural, timeAgo, store, biasBar, biasSummary, biasLegend, sideCounts,
+  bucketOf, sideOf, esc, safeUrl, fold, plural, placeLabel, timeAgo, store, biasBar, biasSummary, biasLegend, sideCounts,
 } from './lib.js';
 
 // ---------- Filtres selon les préférences ----------
@@ -255,6 +255,9 @@ function coverageBlock(story, ctx) {
 
   return `<div class="coverage">
     <div class="panel wide"><h3>Qui couvre cette histoire</h3>${biasBar(story.bias, { big: true })}${biasLegend(story.bias)}<p class="bias-summary">${esc(verdict)}</p></div>
+    ${story.place ? `<div class="panel wide minimap" data-minimap="${esc(story.id)}">
+      <div class="minimap-map" aria-hidden="true"></div>
+      <a class="minimap-label" href="#/globe/${esc(story.id)}"><b>${esc(placeLabel(story.place))}</b><span>Où ça se passe, et d'où viennent les médias · Ouvrir le globe →</span></a></div>` : ''}
     <div class="panel"><h3>Langue</h3>
       <div class="split"><span style="--c:var(--accent);flex:${story.langs.fr}"></span><span style="--c:var(--text-3);flex:${story.langs.en}"></span></div>
       <div class="kv"><span>Français</span><span>${story.langs.fr} (${Math.round((100 * story.langs.fr) / langTotal)} %)</span></div>
@@ -303,7 +306,7 @@ export function renderStory(ctx, id) {
     <a class="back" href="#/" data-back>← Retour</a>
     <div class="kicker">${story.regions.map((r) => `<a class="region" href="#/region/${r}">${esc(REGION_LABEL[r])}</a>`).join('')}${(story.topics || []).map((t) => `<a class="topic" href="#/theme/${t}">${esc(TOPIC_LABEL[t])}</a>`).join('')}<span>Première mention ${esc(timeAgo(story.firstSeen))}</span><span>Mise à jour ${esc(timeAgo(story.updated))}</span></div>
     <h1>${esc(displayTitle(story, ctx))}</h1>
-    <div class="meta">${story.place ? `<a class="flag globe-link" href="#/globe/${esc(story.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>${esc(story.place.name)} · Voir sur le globe</a>` : ''}${flags(story)}</div>
+    <div class="meta">${story.place ? `<a class="flag globe-link" href="#/globe/${esc(story.id)}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>${esc(placeLabel(story.place))} · Voir sur le globe</a>` : ''}${flags(story)}</div>
     ${img}
     ${summaryBlock(story, ctx)}
     ${coverageBlock(story, ctx)}
@@ -364,7 +367,7 @@ export function renderSources(ctx) {
       <li><strong>Ton par article.</strong> Le ton est évalué pour chaque titre, pas pour le média : un titre factuel d'un média partisan n'est pas pénalisé, et un titre sensationnaliste est signalé où qu'il soit publié.</li>
       <li><strong>Angles morts.</strong> Une histoire est un angle mort quand au moins trois médias d'un côté la couvrent et que l'autre côté l'ignore presque (15 % ou moins). Les « deux solitudes » sont les histoires canadiennes couvertes dans une seule langue officielle.</li>
       <li><strong>Résumés.</strong> Si une clé API est configurée, un résumé neutre est généré par IA pour les histoires les plus couvertes, avec le cadrage de chaque camp. Il est toujours identifié comme tel.</li>
-      <li><strong>Globe.</strong> Le lieu d'une histoire est déduit des noms de lieux cités dans ses titres et descriptions : le plus précis et le plus cité l'emporte. Une histoire sans lieu clair reste hors du globe. Les arcs partent de la ville où sont établis les médias de chaque pays. Données : GeoNames (CC BY 4.0), Natural Earth, OpenFreeMap et © les contributeurs d'OpenStreetMap.</li>
+      <li><strong>Globe.</strong> Le lieu d'une histoire est déduit des noms de lieux cités dans ses titres et descriptions, du plus précis au plus vaste : ville, région, province ou État, pays. Quand seul le pays ou la province est connu, le point est posé sur sa capitale, indiquée entre parenthèses (« Japon (Tokyo) »). Une histoire sans lieu clair reste hors du globe. Les arcs partent de la ville où sont établis les médias de chaque pays. Données : GeoNames (CC BY 4.0), Natural Earth, OpenFreeMap et © les contributeurs d'OpenStreetMap; imagerie satellite Sentinel-2 cloudless d'EOX (CC BY 4.0, données Copernicus) ou NASA Blue Marble.</li>
       <li><strong>Vie privée.</strong> Aucun compte ni témoin de pistage. Votre profil de lecture est calculé et conservé dans votre navigateur seulement.</li>
     </ul>
   </details>

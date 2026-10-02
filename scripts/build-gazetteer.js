@@ -130,7 +130,41 @@ for (const c of selected.sort((a, b) => b.population - a.population)) {
 }
 
 // --- Régions et lieux ajoutés à la main -----------------------------------
-for (const r of extra.regions) add({ k: 'region', n: r.name, la: r.lat, lo: r.lon, z: r.zoom, c: r.cc || null }, [r.name, ...r.aliases]);
+const regionIndex = new Map();
+for (const r of extra.regions) {
+  if (!r.name) continue;
+  regionIndex.set(r.name, add({ k: 'region', n: r.name, la: r.lat, lo: r.lon, z: r.zoom, c: r.cc || null, ...(r.admin && { a: r.admin }) }, [r.name, ...r.aliases]));
+}
+
+// --- Repères : où placer le point quand on ne connaît que le pays, la province ou la région.
+// Pays : la capitale. Province ou État : sa capitale. Région : la ville choisie à la main.
+// Une ville déjà citée dans l'histoire passe toujours avant ce repère (voir places.js).
+const largestKept = (test) => {
+  let best = null;
+  places.forEach((p, i) => { if (p.k === 'city' && test(p) && (best == null || p.p > places[best].p)) best = i; });
+  return best;
+};
+const noCapital = [];
+for (const [cc, i] of countryIndex) {
+  const cap = capitals.get(cc);
+  const an = (cap && cityIndex.get(`${cap.name}|${cc}`)) ?? largestKept((p) => p.c === cc);
+  if (an != null) places[i].an = an;
+  if (!cap) noCapital.push(`${cc}→${an != null ? places[an].n : '—'}`);
+}
+for (const p of places) {
+  if (p.k !== 'admin') continue;
+  const [cc, admin] = p.a.split('.');
+  const capital = cities.filter((c) => c.country === cc && c.adminCode === admin && c.featureCode === 'PPLA').sort((a, b) => b.population - a.population)[0];
+  const an = (capital && cityIndex.get(`${capital.name}|${cc}`)) ?? largestKept((q) => q.a === p.a);
+  if (an != null) p.an = an;
+}
+for (const r of extra.regions) {
+  if (!r.anchor) continue;
+  const an = cityIndex.get(r.anchor) ?? regionIndex.get(r.anchor);
+  if (an == null) console.warn(`Repère introuvable : ${r.anchor}`);
+  else places[regionIndex.get(r.name)].an = an;
+}
+if (noCapital.length) console.log(`Pays sans capitale dans GeoNames (plus grande ville retenue) : ${noCapital.join(', ')}`);
 
 const resolve = (target) => {
   if (target.startsWith('country:')) return countryIndex.get(target.slice(8));
