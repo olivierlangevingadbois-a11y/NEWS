@@ -111,6 +111,7 @@ src/build.js             Orchestration : récupère → fusionne l'historique �
 src/pipeline/fetch.js    Lecture RSS / Atom / RDF, concurrence bornée, rapport de santé des flux
 src/pipeline/text.js     Normalisation bilingue FR/EN (lexique commun, noms propres, racinisation)
 src/pipeline/cluster.js  TF-IDF + regroupement agglomératif à liaison moyenne (histoires FR + EN réunies)
+src/pipeline/merge.js    Fusion avec l'historique des 72 h (une date re-datée par le flux garde sa valeur d'origine)
 src/pipeline/geo.js      Sections régionales (lieux du répertoire, institutions, personnalités)
 src/pipeline/topics.js   Thèmes : sciences (espace, santé), IA, environnement (catastrophes naturelles)
 src/pipeline/places.js   Lieu de chaque histoire pour le globe (répertoire config/gazetteer.json)
@@ -128,6 +129,7 @@ public/                  Site statique sans cadriciel (HTML, CSS, modules JS)
 - **Régions.** Une histoire va dans la section de chaque lieu qu'elle cite (le même répertoire que le globe), ainsi que des personnalités et institutions connues (Trump, CAQ, OTAN). La section du lieu affiché sur le globe en fait toujours partie. La rubrique du flux ou le pays du média ne servent que si aucun article de l'histoire ne cite de lieu. L'Amérique latine n'a pas de section : ces histoires restent dans « À la une » et les thèmes.
 - **Fenêtre.** Les 72 dernières heures. L'historique est conservé entre deux exécutions dans le cache de GitHub Actions.
 - **Classement.** Nombre de médias qui en parlent *maintenant* : chacun compte selon l'âge de son article le plus récent (demi-vie de 12 h). Un nouvel article ne rajeunit donc pas toute une histoire de plusieurs jours. Léger avantage pour le Québec et le Canada.
+- **Dates.** Quand un média modifie un article, son flux change souvent la date. Prisme garde la date de première publication, pour qu'un article de lundi ne redevienne pas « frais » mercredi.
 - **Histoires suivies sur plusieurs jours.** Deux articles publiés à plus d'un jour d'écart doivent se ressembler davantage pour être regroupés, pour qu'un grand sujet (l'Ukraine, Trump) ne devienne pas une seule histoire de 72 h. Le titre affiché est pris parmi les articles des 18 dernières heures de l'histoire.
 
 ## Ajuster les sources
