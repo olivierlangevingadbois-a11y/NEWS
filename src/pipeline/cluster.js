@@ -49,10 +49,16 @@ export function buildVectors(articles) {
   });
 }
 
+// Deux articles publiés à plus d'un jour d'écart parlent rarement du même
+// événement, même avec le même vocabulaire (« Ukraine », « Trump »). Leur
+// similarité baisse avec l'écart : × 0,67 à 48 h, × 0,4 à partir de 67 h.
+// Sans cela, un grand sujet suivi plusieurs jours devient une seule histoire
+// qui garde son titre de lundi et reste en tête jusqu'à vendredi.
+const timeFactor = (hours) => (hours <= 24 ? 1 : Math.max(0.4, 1 - (hours - 24) / 72));
+
 export function clusterArticles(articles, opts = {}) {
   const edgeThreshold = opts.edgeThreshold ?? 0.2;
   const mergeThreshold = opts.mergeThreshold ?? 0.12;
-  const maxGapHours = opts.maxGapHours ?? 60;
   const vectors = buildVectors(articles);
   const times = articles.map((a) => Date.parse(a.published) || 0);
 
@@ -85,9 +91,7 @@ export function clusterArticles(articles, opts = {}) {
         let shared = 0;
         for (const t of vectors[i].keys()) if (vectors[j].has(t)) shared++;
         if (shared < 2) continue;
-        let sim = cosine(vectors[i], vectors[j]);
-        const gap = Math.abs(times[i] - times[j]) / 3.6e6;
-        if (gap > maxGapHours) sim *= 0.75;
+        const sim = cosine(vectors[i], vectors[j]) * timeFactor(Math.abs(times[i] - times[j]) / 3.6e6);
         if (sim >= edgeThreshold) edges.push([i, j, sim]);
       }
     }
@@ -98,11 +102,16 @@ export function clusterArticles(articles, opts = {}) {
   const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
   const centroid = new Map(vectors.map((v, i) => [i, new Map(v)]));
   const members = new Map(articles.map((_, i) => [i, [i]]));
+  const timeSum = new Map(times.map((t, i) => [i, t]));
+  const meanTime = (r) => timeSum.get(r) / members.get(r).length;
 
   // Liaison moyenne : similarité moyenne entre toutes les paires des deux groupes,
   // calculée via les sommes de vecteurs. Plus stricte que le cosinus des
   // centroïdes, elle empêche un sujet large (« Trump ») d'aspirer tout le reste.
-  const averageLink = (a, b) => cosine(centroid.get(a), centroid.get(b)) / (members.get(a).length * members.get(b).length);
+  // L'écart entre les dates moyennes des deux groupes compte aussi, pour qu'une
+  // histoire ne dérive pas de jour en jour, un article à la fois.
+  const averageLink = (a, b) => (cosine(centroid.get(a), centroid.get(b)) / (members.get(a).length * members.get(b).length))
+    * timeFactor(Math.abs(meanTime(a) - meanTime(b)) / 3.6e6);
 
   for (const [i, j, sim] of edges) {
     const a = find(i), b = find(j);
@@ -114,6 +123,7 @@ export function clusterArticles(articles, opts = {}) {
     const ck = centroid.get(keep);
     for (const [t, v] of centroid.get(drop)) ck.set(t, (ck.get(t) || 0) + v);
     members.get(keep).push(...members.get(drop));
+    timeSum.set(keep, timeSum.get(keep) + timeSum.get(drop));
     members.delete(drop);
     centroid.delete(drop);
   }
