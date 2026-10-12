@@ -127,7 +127,8 @@ public/                  Site statique sans cadriciel (HTML, CSS, modules JS)
 - **Regroupement.** Les titres et descriptions sont convertis en vecteurs TF-IDF. Un lexique bilingue rapproche « droits de douane » et « tariffs », « Chine » et « China ». Deux groupes ne fusionnent que si leur similarité *moyenne* est suffisante, ce qui empêche un sujet large d'absorber des histoires distinctes.
 - **Régions.** Une histoire va dans la section de chaque lieu qu'elle cite (le même répertoire que le globe), ainsi que des personnalités et institutions connues (Trump, CAQ, OTAN). La section du lieu affiché sur le globe en fait toujours partie. La rubrique du flux ou le pays du média ne servent que si aucun article de l'histoire ne cite de lieu. L'Amérique latine n'a pas de section : ces histoires restent dans « À la une » et les thèmes.
 - **Fenêtre.** Les 72 dernières heures. L'historique est conservé entre deux exécutions dans le cache de GitHub Actions.
-- **Classement.** Nombre de sources, fraîcheur (demi-vie de 16 h) et un léger avantage pour le Québec et le Canada.
+- **Classement.** Nombre de médias qui en parlent *maintenant* : chacun compte selon l'âge de son article le plus récent (demi-vie de 12 h). Un nouvel article ne rajeunit donc pas toute une histoire de plusieurs jours. Léger avantage pour le Québec et le Canada.
+- **Histoires suivies sur plusieurs jours.** Deux articles publiés à plus d'un jour d'écart doivent se ressembler davantage pour être regroupés, pour qu'un grand sujet (l'Ukraine, Trump) ne devienne pas une seule histoire de 72 h. Le titre affiché est pris parmi les articles des 18 dernières heures de l'histoire.
 
 ## Ajuster les sources
 

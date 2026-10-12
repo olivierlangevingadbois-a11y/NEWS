@@ -5,6 +5,7 @@ import { locateStory } from './places.js';
 
 export const FACT_SCORE = { 'very-high': 5, high: 4, mostly: 3, mixed: 2, low: 1 };
 const BUCKETS = ['left', 'cleft', 'center', 'cright', 'right'];
+const HALF_LIFE_HOURS = 12;
 
 export function biasBucket(source) {
   if (source.bias == null) return source.own?.type === 'state' ? 'state' : 'unrated';
@@ -74,19 +75,22 @@ export function buildStory(cluster, articles, sourcesById, regionScores, now) {
   const solitude = domestic && canadian.length >= 3 && (caFr === 0 || caEn === 0) ? (caFr === 0 ? 'en' : 'fr') : null;
   const foreign = domestic ? sources.filter((s) => !['QC', 'CA'].includes(s.country)).length : 0;
 
-  // Titre représentatif : central, en français si possible, fiable et au ton neutre.
+  const times = items.map((it) => Date.parse(it.a.published));
+  const first = Math.min(...times);
+  const updated = Math.max(...times);
+  const earliest = items.find((it) => Date.parse(it.a.published) === first).a;
+
+  // Titre représentatif : central, en français si possible, fiable et au ton neutre,
+  // choisi parmi les articles des 18 dernières heures de l'histoire pour montrer
+  // son développement le plus récent plutôt que son point de départ.
+  const recent = unique.filter((it) => updated - Date.parse(it.a.published) <= 18 * 3.6e6);
   const rank = (it) => {
     const s = sourcesById[it.a.sourceId];
     return it.centrality + (it.a.lang === 'fr' ? 0.35 : 0) + ((FACT_SCORE[s.fact] || 3) >= 4 ? 0.1 : 0)
       + (s.bias === 0 ? 0.08 : 0) - 0.25 * it.a.tone.level;
   };
-  const lead = [...unique].sort((x, y) => rank(y) - rank(x))[0].a;
+  const lead = [...(recent.length ? recent : unique)].sort((x, y) => rank(y) - rank(x))[0].a;
   const withImage = [lead, ...unique.map((it) => it.a)].find((a) => a.image);
-
-  const times = items.map((it) => Date.parse(it.a.published));
-  const first = Math.min(...times);
-  const updated = Math.max(...times);
-  const earliest = items.find((it) => Date.parse(it.a.published) === first).a;
 
   // Ton des titres par camp : révèle le cadrage, pas seulement la couverture.
   const toneBySide = {};
@@ -98,9 +102,19 @@ export function buildStory(cluster, articles, sourcesById, regionScores, now) {
     if (group.length) toneBySide[side] = Math.round((100 * group.filter((it) => it.a.tone.level > 0).length) / group.length);
   }
 
-  const hoursOld = (now - updated) / 3.6e6;
+  // Classement : chaque média compte selon l'âge de son article le plus récent
+  // (demi-vie de 12 h). Un seul nouvel article ne rajeunit pas toute une histoire
+  // de plusieurs jours : seuls les médias qui en parlent maintenant comptent pleinement.
+  const latestBySource = new Map();
+  for (const it of items) {
+    const t = Date.parse(it.a.published);
+    if (!(latestBySource.get(it.a.sourceId) >= t)) latestBySource.set(it.a.sourceId, t);
+  }
+  const decay = (t) => Math.pow(0.5, Math.max(0, now - t) / 3.6e6 / HALF_LIFE_HOURS);
+  const freshSources = [...latestBySource.values()].reduce((sum, t) => sum + decay(t), 0);
+  const freshArticles = items.reduce((sum, it) => sum + decay(Date.parse(it.a.published)), 0);
   const regionBoost = primary === 'quebec' ? 1.3 : primary === 'canada' ? 1.12 : 1;
-  const score = (Math.log2(1 + unique.length) * 10 + Math.min(items.length, 30) * 0.3) * Math.pow(0.5, hoursOld / 16) * regionBoost;
+  const score = (Math.log2(1 + freshSources) * 10 + Math.min(freshArticles, 30) * 0.3) * regionBoost;
 
   const firstUrl = [...items].sort((x, y) => Date.parse(x.a.published) - Date.parse(y.a.published) || x.a.url.localeCompare(y.a.url))[0].a.url;
 
