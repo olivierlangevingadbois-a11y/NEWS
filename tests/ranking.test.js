@@ -64,3 +64,17 @@ test('le titre d’une histoire suivie sur deux jours montre son développement 
   assert.equal(story.sourceCount, 6);
   assert.match(story.title, /bilan/);
 });
+
+test('un article re-daté par son flux garde sa date d’origine', async () => {
+  const { mergeArticles } = await import('../src/pipeline/merge.js');
+  const opts = { now, windowHours: 72, sourcesById };
+  const monday = new Date(now - 60 * 3.6e6).toISOString();
+  const state = [{ sourceId: 's1', url: 'https://e.x/treve', title: 'Trump annonce une trêve', published: monday }];
+  // Le flux republie le même article avec une date de ce soir et un titre retouché.
+  const fetched = [{ sourceId: 's1', url: 'https://e.x/treve?utm_source=rss', title: 'Trump annonce une trêve, Zelensky dément', published: new Date(now - 3.6e6).toISOString() }];
+  const { articles, redated } = mergeArticles(state, fetched, opts);
+  assert.equal(articles.length, 1);
+  assert.equal(articles[0].published, monday);
+  assert.equal(articles[0].title, 'Trump annonce une trêve, Zelensky dément');
+  assert.equal(redated, 1);
+});

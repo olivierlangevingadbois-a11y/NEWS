@@ -5,7 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fetchAll, canonicalUrl } from './pipeline/fetch.js';
+import { fetchAll } from './pipeline/fetch.js';
+import { mergeArticles } from './pipeline/merge.js';
 import { detectLanguage } from './pipeline/text.js';
 import { tagArticle, REGIONS } from './pipeline/geo.js';
 import { scoreTone } from './pipeline/tone.js';
@@ -64,28 +65,8 @@ async function main() {
 
   // 2. Fusion avec l'état précédent (les flux ne gardent que les derniers items)
   const state = DEMO ? { articles: [] } : readJson(path.join(STATE, 'articles.json'), { articles: [] });
-  const cutoff = now - WINDOW_HOURS * 3.6e6;
-  const byUrl = new Map();
-  for (const a of state.articles) if (Date.parse(a.published) >= cutoff && sourcesById[a.sourceId]) byUrl.set(a.url, a);
-  for (const raw of fetched) {
-    const url = canonicalUrl(raw.url);
-    const prev = byUrl.get(url);
-    let published = Date.parse(raw.published);
-    if (!Number.isFinite(published)) published = prev ? Date.parse(prev.published) : now;
-    published = Math.min(published, now);
-    if (published < cutoff) continue;
-    byUrl.set(url, { ...raw, url, published: new Date(published).toISOString() });
-  }
-  // Même titre, même source (republication sous une autre URL) : on garde un seul exemplaire.
-  const seenTitles = new Set();
-  const articles = [...byUrl.values()]
-    .sort((a, b) => Date.parse(a.published) - Date.parse(b.published))
-    .filter((a) => {
-      const key = `${a.sourceId}|${a.title.toLowerCase()}`;
-      if (seenTitles.has(key)) return false;
-      seenTitles.add(key);
-      return true;
-    });
+  const { articles, redated } = mergeArticles(state.articles, fetched, { now, windowHours: WINDOW_HOURS, sourcesById });
+  if (redated) console.log(`Dates : ${redated} articles re-datés par leur flux, date d'origine conservée`);
 
   for (const a of articles) {
     const source = sourcesById[a.sourceId];
@@ -170,8 +151,14 @@ async function main() {
   const byKind = located.reduce((m, st) => ({ ...m, [st.place.kind]: (m[st.place.kind] || 0) + 1 }), {});
   const anchored = located.filter((st) => st.place.anchor).length;
   console.log(`Globe : ${located.length}/${multi.length} histoires localisées (${Math.round((100 * located.length) / (multi.length || 1))} %) — ${Object.entries(byKind).map(([k, n]) => `${n} ${k}`).join(', ')}; ${anchored} posées sur une capitale ou la ville principale d'une région`);
-  // Échantillon lisible dans les journaux de GitHub Actions pour vérifier les lieux retenus.
-  for (const st of multi.slice(0, 25)) console.log(`  ${(st.place ? `${st.place.name} (${st.place.kind}${st.place.anchor ? ` → ${st.place.anchor}` : ''})` : '—').padEnd(40)} ← ${st.title.slice(0, 90)}`);
+  // Échantillon lisible dans les journaux de GitHub Actions pour vérifier les lieux et le classement :
+  // âge de la 1re mention et du dernier article, médias qui en parlent depuis 12 h sur le total.
+  const hours = (iso) => Math.round((now - Date.parse(iso)) / 3.6e6);
+  for (const st of multi.slice(0, 25)) {
+    const recent = st.articles.filter((a) => hours(a.published) <= 12).length;
+    const age = `${hours(st.firstSeen)}h/${hours(st.updated)}h ${recent}/${st.sourceCount}`.padEnd(14);
+    console.log(`  ${age} ${(st.place ? `${st.place.name} (${st.place.kind}${st.place.anchor ? ` → ${st.place.anchor}` : ''})` : '—').padEnd(40)} ← ${st.title.slice(0, 90)}`);
+  }
 }
 
 main().catch((err) => {
